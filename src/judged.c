@@ -38,7 +38,7 @@ static int run = 1;
 
 /*
  *
- * Signal-Funktions
+ * signal-function
  *
  */
 
@@ -49,30 +49,24 @@ static void master_term (int signr) {
 
 /*
  *
- * Daemon-Funktion
+ * daemon-function
  *
  */
 
 static void start_daemon (const char *log_name, int facility) {
 	int i;
 	pid_t pid;
-/* Signal SIGHUP ignorieren */
-	signal (SIGHUP, SIG_IGN);
-/* Oder einfach: signal(SIGHUP, SIG_IGN) ... */
-/* Elternprozess beenden, somit haben wir einen Waisen */
+/* ignore SIGHUP */
+	signal(SIGHUP, SIG_IGN);
 	if ((pid = fork ()) != 0) exit (EXIT_SUCCESS);
-/* Kindprozess wird zum Sessionführer. Misslingt */
-/* dies, kann der Fehler daran liegen, dass der */
-/* Prozess bereits Sessionführer ist */
 	if (setsid() < 0) {
-		printf("%s kann nicht Sessionführer werden!\n", log_name);
+		printf("%s can't set sessionID. exit.\n", log_name);
 		exit (EXIT_FAILURE);
 	}
 	chdir ("/");
 	umask (0);
-/* Wir schließen alle geöffneten Filedeskriptoren...*/
+/* close all open filedescriptors and open log */
 	for (i = sysconf (_SC_OPEN_MAX); i > 0; i--) close (i);
-/* Da unser Dämonprozess selbst kein Terminal für die Ausgabe hat...*/
 	openlog ( log_name, LOG_PID | LOG_CONS | LOG_NDELAY, facility );
 }
 
