@@ -511,12 +511,6 @@ int main(int argc, char **argv)
 		}
 
 /*
-	sleep(30);
-	cleanup(semid, msgid, childs, &pid_childs[0]);
-	return EXIT_SUCCESS;
-*/
-
-/*
  * 
  * check messagequeue
  * 
