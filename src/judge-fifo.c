@@ -70,30 +70,10 @@ int main(int argc, char **argv) {
 		return EXIT_FAILURE;
 	}
 
-	if (getgid() == 0) {
-		if (judgegid > 0) {
-			if ((setgid(judgegid)) != 0) {
-				syslog(LOG_NOTICE, "%s: problem while changing GID to %d\n", judgecode, judgegid);
-				return EXIT_FAILURE;
-			}
-		}
-		else {
-			syslog(LOG_NOTICE, "%s: will not run with GID %d\n", judgecode, judgegid);
-			return EXIT_FAILURE;
-		}
-	}
-
-	if (getuid() == 0) {
-		if (judgeuid > 0) {
-			if ((setuid(judgeuid)) != 0) {
-				syslog(LOG_NOTICE, "%s: problem while changing UID to %d\n", judgecode, judgeuid);
-				return EXIT_FAILURE;
-			}
-		}
-		else {
-			syslog(LOG_NOTICE, "%s: will not run with UID %d\n", judgecode, judgeuid);
-			return EXIT_FAILURE;
-		}
+	if ((res = chowngrp(judgeuid, judgegid)) != 0) {
+		if (res == -1) syslog(LOG_NOTICE, "%s: can't change user. exit.\n", judgecode);
+		if (res == -2) syslog(LOG_NOTICE, "%s: can't change group. exit.\n", judgecode);
+		if (res < 0) return EXIT_FAILURE;
 	}
 
 	signal (SIGQUIT, fifo_quit);
@@ -131,12 +111,6 @@ int main(int argc, char **argv) {
 			else {
 
 				signal (SIGQUIT, fifo_end);
-
-				if ((res = chowngrp(judgeuid, judgegid)) != 0) {
-					if (res == -1) syslog(LOG_NOTICE, "%s: can't change user. exit.\n", judgecode);
-					if (res == -2) syslog(LOG_NOTICE, "%s: can't change group. exit.\n", judgecode);
-					if (res < 0) return EXIT_FAILURE;
-				}
 
 				int semid, msgid, cnt = 0, blocks = 0, pos = 0;
 				FILE *fp_fifo, *fp_dipc;

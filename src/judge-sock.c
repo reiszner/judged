@@ -7,6 +7,8 @@
  ****************************************************************************/
 
 #include <syslog.h>
+#include <errno.h>
+#include <sys/wait.h>
 
 #include "ipc.h"
 #include "socket.h"
@@ -22,15 +24,14 @@ static void socket_quit (int signr) {
 	run = 0;
 }
 
-
-
 int main(int argc, char **argv) {
 
 	struct message msg;
 
 	char judgedir[255], judgecode[255], gateway[255], socket[255];
-	int judgeuid, judgegid, childs = 0, type = NONE, status = 0, port;
+	int judgeuid, judgegid, type = NONE, status = 0, port, res;
 	int fd_socket, fd_connect;
+	pid_t pid;
 	key_t ipc_key;
 
 	sscanf(getenv("JUDGE_UID"), "%d", &judgeuid);
@@ -109,30 +110,10 @@ int main(int argc, char **argv) {
  *
  */
 
-	if (getgid() == 0) {
-		if (judgegid > 0) {
-			if ((setgid(judgegid)) != 0) {
-				syslog(LOG_NOTICE, "%s: problem while changing GID to %d\n", judgecode, judgegid);
-				return EXIT_FAILURE;
-			}
-		}
-		else {
-			syslog(LOG_NOTICE, "%s: will not run with GID %d\n", judgecode, judgegid);
-			return EXIT_FAILURE;
-		}
-	}
-
-	if (getuid() == 0) {
-		if (judgeuid > 0) {
-			if ((setuid(judgeuid)) != 0) {
-				syslog(LOG_NOTICE, "%s: problem while changing UID to %d\n", judgecode, judgeuid);
-				return EXIT_FAILURE;
-			}
-		}
-		else {
-			syslog(LOG_NOTICE, "%s: will not run with UID %d\n", judgecode, judgeuid);
-			return EXIT_FAILURE;
-		}
+	if ((res = chowngrp(judgeuid, judgegid)) != 0) {
+		if (res == -1) syslog(LOG_NOTICE, "%s: can't change user. exit.\n", judgecode);
+		if (res == -2) syslog(LOG_NOTICE, "%s: can't change group. exit.\n", judgecode);
+		if (res < 0) return EXIT_FAILURE;
 	}
 
 // listen on socket
@@ -145,9 +126,40 @@ int main(int argc, char **argv) {
 // accept connections until quit
 
 	signal (SIGQUIT, socket_quit);
+//	signal (SIGCHLD, child_quit);
 	while (run) {
-		usleep (100000);
-//		while ((fd_connect = accept_socket(&fd_socket)) >= 0) {
+
+		pid = waitpid (-1, NULL, WNOHANG);
+		if (pid < 0) syslog(LOG_NOTICE, "%s: error while waitpid. errorcode: %d\n", judgecode, pid);
+		else if (pid > 0) {
+			syslog(LOG_NOTICE, "%s: sock-child '%d' ended.\n", judgecode, pid);
+		}
+
+		fd_connect = accept_socket(&fd_socket);
+		if( fd_connect < 0 ) {
+			if( errno == EINTR )
+				continue;
+			else {
+				syslog(LOG_NOTICE, "%s: error while accept() (%s)\n", judgecode, strerror(errno));
+				return EXIT_FAILURE;
+			}
+		}
+
+		if ((pid = fork ()) < 0) {
+			syslog(LOG_NOTICE, "%s: error while fork sock-child.\n", judgecode);
+			run = 0;
+		}
+
+/* Parentprocess */
+		else if (pid > 0) {
+			close (fd_connect);
+		}
+
+/* Childprocess */
+		else {
+			close (fd_socket);
+
+		}
 
 	}
 
