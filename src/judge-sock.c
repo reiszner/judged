@@ -1,5 +1,5 @@
 /***************************************************************************
- *            judge-socket.c
+ *            judge-sock.c
  *
  *  Mit Juli 10 11:31:28 2013
  *  Copyright  2013  Sascha Reißner
@@ -8,6 +8,7 @@
 
 #include <syslog.h>
 #include <errno.h>
+#include <time.h>
 #include <sys/wait.h>
 
 #include "ipc.h"
@@ -17,6 +18,7 @@
 #define NONE 0
 #define UNIX 1
 #define INET 2
+#define BUFFER_SIZE 1024
 
 static int run = 1;
 
@@ -159,6 +161,87 @@ int main(int argc, char **argv) {
 		else {
 			close (fd_socket);
 
+			signal (SIGQUIT, SIG_IGN);
+
+			int semid, msgid, cnt = 0, blocks = 1, pos = 0;
+			FILE *fp_dipc;
+			char *msgbuffer, temp[1024];
+			time_t now;
+
+			semid = semget (ipc_key, 0, IPC_PRIVATE);
+			if (semid < 0) return EXIT_FAILURE;
+			msgid = msgget (ipc_key, IPC_PRIVATE);
+			if (msgid < 0) return EXIT_FAILURE;
+
+/*
+			sprintf(temp, "Judged: %s\n", judgecode);
+			cnt = strlen(temp);
+			if ( write(fd_connect, temp, cnt) != cnt) {
+				syslog( LOG_NOTICE, "%s: error while write()...(%s)\n", judgecode, strerror(errno));
+				return EXIT_FAILURE;
+			}
+
+			cnt = read(fd_connect, temp, sizeof(temp));
+			temp[cnt] = 0;
+
+			if (strncmp("message", temp, 7) == 0) {
+*/
+
+			msgbuffer = malloc(BUFFER_SIZE * sizeof(char) * blocks);
+			while ((cnt = read(fd_connect, &msgbuffer[pos * sizeof(char)], sizeof(msgbuffer) - pos)) > 0) {
+				pos += cnt;
+				cnt = 0;
+				if ( (int)(pos / BUFFER_SIZE) == blocks) {
+					syslog( LOG_NOTICE, "%s: pos = %d ; realloc to size %d (%d blocks).\n", judgecode, pos, BUFFER_SIZE * (blocks + 1), blocks + 1);
+					msgbuffer = realloc(msgbuffer, BUFFER_SIZE * sizeof(char) * ++blocks);
+				}
+			}
+			msgbuffer[pos] = 0;
+			close (fd_connect);
+
+// Auswerten !!!
+			semaphore_operation (semid, DIP, LOCK);
+
+// we have receive a QUIT
+			if (strncmp("From quit\n", msgbuffer, 10) == 0) {
+				sprintf(msg.text, msgbuffer);
+				msg.prio=1;
+				msgsnd(msgid, &msg, MSGLEN, 0);
+			}
+
+// we have receive a ATRUN
+			else if (strncmp("From atrun ", msgbuffer, 11) == 0) {
+				sprintf(msg.text, msgbuffer);
+				msg.prio=1;
+				msgsnd(msgid, &msg, MSGLEN, 0);
+			}
+
+// we have receive a message
+			else {
+				if ( strstr(msgbuffer, gateway) == NULL) {
+					strncpy(temp, msgbuffer, 1024);
+					temp[1023] = '\0';
+					syslog( LOG_NOTICE, "%s: incoming message '%s' (size: %ld)\n", judgecode, strtok(temp, "\n"), (long int) strlen(msgbuffer));
+				}
+
+				sprintf(temp, "%s/dip -q", judgedir);
+				fp_dipc = popen(temp, "w");
+				if(fp_dipc == NULL) syslog( LOG_NOTICE, "%s: No conection to dip\n", judgecode);
+				else {
+					res = fwrite(msgbuffer, sizeof(char), strlen(msgbuffer), fp_dipc);
+					if ( res != strlen(msgbuffer))
+						syslog( LOG_NOTICE, "%s: write to dip has a problem - %d\n", judgecode, res);
+					pclose(fp_dipc);
+				}
+				time(&now);
+				sprintf(msg.text, "From atrun %ld", now + 61);
+				msg.prio=1;
+				msgsnd(msgid, &msg, MSGLEN, 0);
+			}
+
+			semaphore_operation (semid, DIP, UNLOCK);
+			if (msgbuffer) free(msgbuffer);
+			return EXIT_SUCCESS;
 		}
 
 	}
