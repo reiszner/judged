@@ -25,6 +25,7 @@
 static int run = 1;
 static void fifo_quit (int signr) {
 	run = 0;
+	return;
 }
 
 static void fifo_end (int signr) {
@@ -77,6 +78,7 @@ int main(int argc, char **argv) {
 	}
 
 	signal (SIGQUIT, fifo_quit);
+	signal (SIGTERM, fifo_quit);
 	while(run) {
 
 		usleep (100000);
@@ -110,9 +112,9 @@ int main(int argc, char **argv) {
 /* Childprocess */
 			else {
 
-				signal (SIGQUIT, fifo_end);
+				signal (SIGTERM, fifo_end);
 
-				int semid, msgid, cnt = 0, blocks = 0, pos = 0;
+				int semid, msgid, cnt = 0, blocks = 1, pos = 0;
 				FILE *fp_fifo, *fp_dipc;
 				char *msgbuffer, *msg_begin, *msg_end, temp[1024];
 				time_t now;
@@ -133,16 +135,16 @@ int main(int argc, char **argv) {
 				msgbuffer = malloc(BUFFER_SIZE * sizeof(char));
 
 				cnt = fread(msgbuffer, sizeof(char), BUFFER_SIZE, fp_fifo);
-				signal (SIGQUIT, fifo_quit);
+				signal (SIGTERM, fifo_quit);
 				pos += cnt;
 				cnt = 0;
 
 //				size_t fread(void *puffer, size_t blockgroesse, size_t blockzahl, FILE *datei);
 
 				while (feof(fp_fifo) == 0) {
-					if ( (int)(pos / BUFFER_SIZE) >= blocks) {
-						syslog( LOG_NOTICE, "%s: pos = %d ; realloc to size %d (%d blocks).\n", judgecode, pos, BUFFER_SIZE * (blocks + 2), blocks + 2);
-						msgbuffer = realloc(msgbuffer, sizeof(char) * BUFFER_SIZE * (++blocks + 1));
+					if ( (int)(pos / BUFFER_SIZE) == blocks) {
+						syslog( LOG_NOTICE, "%s: pos = %d ; realloc to size %d (%d blocks).\n", judgecode, pos, BUFFER_SIZE * (blocks + 1), blocks + 1);
+						msgbuffer = realloc(msgbuffer, sizeof(char) * BUFFER_SIZE * ++blocks);
 					}
 					cnt = fread(&msgbuffer[pos * sizeof(char)], sizeof(char), BUFFER_SIZE, fp_fifo);
 					pos += cnt;
@@ -152,7 +154,7 @@ int main(int argc, char **argv) {
 				clearerr(fp_fifo);
 				fclose(fp_fifo);
 				semaphore_operation (semid, FIFO, UNLOCK);
-				msgbuffer[pos] = '\0';
+				msgbuffer[pos] = 0;
 
 // Auswerten !!!
 				semaphore_operation (semid, DIP, LOCK);
@@ -254,40 +256,23 @@ int main(int argc, char **argv) {
 		}
 	}
 
-	syslog(LOG_NOTICE, "%s: 'SIGQUIT' received.", judgecode);
-
 // waiting for all childs
 
-	j = 0;
+	for (i = 0 ; i < fifochilds ; i++) {
+		if (childs_pid[i] > 0) {
+				syslog(LOG_NOTICE, "%s: sending SIGTERM to '%d'\n", judgecode, childs_pid[i]);
+				kill (childs_pid[i], 15);
+		}
+	}
+
 	while (childs > 0) {
 		res = del_child(childs_pid, fifochilds);
 		if (res < 0) syslog(LOG_NOTICE, "%s: error while waitpid. errorcode: %d\n", judgecode, res);
 		else if (res > 0) {
 			syslog(LOG_NOTICE, "%s: fifo-child '%d' ended.\n", judgecode, res);
 			childs--;
-			syslog(LOG_NOTICE, "%s: wait for %d childs.\n", judgecode, childs);
 		}
-
-		if (j < 1) {
-			for (i = 0 ; i < fifochilds ; i++) {
-				if (childs_pid[i] > 0) {
-						syslog(LOG_NOTICE, "%s: sending SIGQUIT to '%d'\n", judgecode, childs_pid[i]);
-						kill (childs_pid[i], 3);
-				}
-			}
-		}
-
-		if (j == 20) {
-			for (i = 0 ; i < fifochilds ; i++) {
-				if (childs_pid[i] > 0) {
-						syslog(LOG_NOTICE, "%s: sending SIGTERM to '%d'\n", judgecode, childs_pid[i]);
-						kill (childs_pid[i], 15);
-				}
-			}
-		}
-
 		usleep(100000);
-		j++;
 	}
 
 	closelog();

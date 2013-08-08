@@ -24,7 +24,16 @@ static int run = 1;
 
 static void socket_quit (int signr) {
 	run = 0;
+	return;
 }
+
+static void child_quit (int signr) {
+	pid_t pid;
+	while ((pid = waitpid (-1, NULL, WNOHANG)) > 0);
+	return;
+}
+
+
 
 int main(int argc, char **argv) {
 
@@ -128,15 +137,15 @@ int main(int argc, char **argv) {
 // accept connections until quit
 
 	signal (SIGQUIT, socket_quit);
-//	signal (SIGCHLD, child_quit);
+	signal (SIGCHLD, child_quit);
 	while (run) {
-
+/*
 		pid = waitpid (-1, NULL, WNOHANG);
 		if (pid < 0) syslog(LOG_NOTICE, "%s: error while waitpid. errorcode: %d\n", judgecode, pid);
 		else if (pid > 0) {
 			syslog(LOG_NOTICE, "%s: sock-child '%d' ended.\n", judgecode, pid);
 		}
-
+*/
 		fd_connect = accept_socket(&fd_socket);
 		if( fd_connect < 0 ) {
 			if( errno == EINTR )
@@ -160,8 +169,6 @@ int main(int argc, char **argv) {
 /* Childprocess */
 		else {
 			close (fd_socket);
-
-			signal (SIGQUIT, SIG_IGN);
 
 			int semid, msgid, cnt = 0, blocks = 1, pos = 0;
 			FILE *fp_dipc;
@@ -187,8 +194,8 @@ int main(int argc, char **argv) {
 			if (strncmp("message", temp, 7) == 0) {
 */
 
-			msgbuffer = malloc(BUFFER_SIZE * sizeof(char) * blocks);
-			while ((cnt = read(fd_connect, &msgbuffer[pos * sizeof(char)], sizeof(msgbuffer) - pos)) > 0) {
+			msgbuffer = malloc(BUFFER_SIZE * sizeof(char));
+			while ((cnt = read(fd_connect, &msgbuffer[pos * sizeof(char)], BUFFER_SIZE * sizeof(char) * blocks - pos)) > 0) {
 				pos += cnt;
 				cnt = 0;
 				if ( (int)(pos / BUFFER_SIZE) == blocks) {

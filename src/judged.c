@@ -77,10 +77,10 @@ int cleanup(int semid, int msgid, int childs, pid_t *pid_childs) {
 	int run = 0, res, i;
 	for (i = 0 ; i < childs ; i++) {
 		if (pid_childs[i] > 0) {
-			if (i==0)      syslog(LOG_NOTICE, "%s: sending 'SIGQUIT' to fifo-child (%d)\n", config.judgecode, pid_childs[i]);
-			else if (i==1) syslog(LOG_NOTICE, "%s: sending 'SIGQUIT' to unix-child (%d)\n", config.judgecode, pid_childs[i]);
-			else           syslog(LOG_NOTICE, "%s: sending 'SIGQUIT' to inet-child (%d)\n", config.judgecode, pid_childs[i]);
-			kill (pid_childs[i], 3);
+			if (i==0)      syslog(LOG_NOTICE, "%s: sending 'SIGTERM' to fifo-child (%d)\n", config.judgecode, pid_childs[i]);
+			else if (i==1) syslog(LOG_NOTICE, "%s: sending 'SIGTERM' to unix-child (%d)\n", config.judgecode, pid_childs[i]);
+			else           syslog(LOG_NOTICE, "%s: sending 'SIGTERM' to inet-child (%d)\n", config.judgecode, pid_childs[i]);
+			kill (pid_childs[i], 15);
 			run++;
 		}
 	}
@@ -192,7 +192,8 @@ int main(int argc, char **argv)
 		sprintf(temp, "%s", config.inetsocket);
 		ptr = strtok(temp, ", ");
 		while(ptr != NULL) {
-			printf("% d. Wort: %s\n", childs++, ptr);
+//			printf("% d. Wort: %s\n", childs, ptr);
+			childs++;
 			ptr = strtok(NULL, ", ");
 		}
 	}
@@ -207,117 +208,6 @@ int main(int argc, char **argv)
 
 	if (strlen(config.inetsocket) > 0) {
 		for (i = 2 ; i < childs ; i++) pid_childs[i] = 0;
-	}
-
-// set enviroment
-
-	if (config.judgeuid > 0) {
-		sprintf(temp,"%d",config.judgeuid);
-		if( setenv("JUDGE_UID", temp, 1) != 0 ) {
-			printf("%s: couldn't set JUDGE_UID\n", config.judgecode);
-			return EXIT_FAILURE;
-		}
-	} else if (config.judgeuid < 0) {
-		printf("%s: no User/UID found in configfile. exit.\n", config.judgecode);
-		return EXIT_FAILURE;
-	}
-
-	if (config.judgegid > 0) {
-		sprintf(temp,"%d",config.judgegid);
-		if( setenv("JUDGE_GID", temp, 1) != 0 ) {
-			syslog( LOG_NOTICE, "%s: couldn't set JUDGE_GID\n", config.judgecode);
-			return EXIT_FAILURE;
-		}
-	} else if (config.judgegid < 0) {
-		printf("%s: no Group/GID found in configfile. exit.\n", config.judgecode);
-		return EXIT_FAILURE;
-	}
-
-	if (strlen(config.judgedir) > 0) {
-		if( setenv("JUDGE_DIR", config.judgedir, 1) != 0 ) {
-			syslog( LOG_NOTICE, "%s: couldn't set JUDGE_DIR\n", config.judgecode);
-			return EXIT_FAILURE;
-		}
-	} else {
-		printf("%s: no directory found in configfile. exit.\n", config.judgecode);
-		return EXIT_FAILURE;
-	}
-
-	if (strlen(config.judgecode) > 0) {
-		if( setenv("JUDGE_CODE", config.judgecode, 1) != 0 ) {
-			syslog( LOG_NOTICE, "%s: couldn't set JUDGE_CODE\n", config.judgecode);
-			return EXIT_FAILURE;
-		}
-	} else {
-		printf("%s: no judgecode found in configfile. exit.\n", config.judgecode);
-		return EXIT_FAILURE;
-	}
-
-	if (strlen(config.ourselves) > 0) {
-		if( setenv("JUDGE_SELVE", config.ourselves, 1) != 0 ) {
-			syslog( LOG_NOTICE, "%s: couldn't set JUDGE_SELVE\n", config.judgecode);
-			return EXIT_FAILURE;
-		}
-	} else {
-		printf("%s: no address for ourselve found in configfile. exit.\n", config.judgecode);
-		return EXIT_FAILURE;
-	}
-
-	if (strlen(config.judgekeeper) > 0) {
-		if( setenv("JUDGE_KEEPER", config.judgekeeper, 1) != 0 ) {
-			syslog( LOG_NOTICE, "%s: couldn't set JUDGE_KEEPER\n", config.judgecode);
-			return EXIT_FAILURE;
-		}
-	} else {
-		printf("%s: no address for judgekeeper found in configfile. exit.\n", config.judgecode);
-		return EXIT_FAILURE;
-	}
-
-	if (strlen(config.gateway) > 0) {
-		if (setenv("JUDGE_GATEWAY", config.gateway, 1) != 0 ) {
-			syslog( LOG_NOTICE, "%s: couldn't set JUDGE_GATEWAY\n", config.judgecode);
-			return EXIT_FAILURE;
-		}
-	} else {
-		printf("%s: no address for gateway found in configfile. exit.\n", config.judgecode);
-		return EXIT_FAILURE;
-	}
-
-	if (strlen(config.fifofile) > 0 && config.fifochilds > 0) {
-		sprintf(temp,"%d",config.fifochilds);
-		if( setenv("JUDGE_FIFOCHILDS", temp, 1) != 0 ) {
-			syslog( LOG_NOTICE, "%s: couldn't set JUDGE_FIFOCHILDS\n", config.judgecode);
-			return EXIT_FAILURE;
-		}
-		if( setenv("JUDGE_FIFO", config.fifofile, 1) != 0 ) {
-			syslog( LOG_NOTICE, "%s: couldn't set JUDGE_FIFO\n", config.judgecode);
-			return EXIT_FAILURE;
-		}
-	}
-
-	if (strlen(config.unixsocket) > 0) {
-		if( setenv("JUDGE_UNIX", config.unixsocket, 1) != 0 ) {
-			syslog( LOG_NOTICE, "%s: couldn't set JUDGE_UNIX\n", config.judgecode);
-			return EXIT_FAILURE;
-		}
-	}
-
-	if (strlen(config.inetsocket) > 0 && config.inetport > 0) {
-		i=0;
-		ptr = strtok(config.inetsocket, ", ");
-		while(ptr != NULL) {
-			sprintf(temp, "JUDGE_INET%d", i++);
-			if( setenv(temp, ptr, 1) != 0 ) {
-				syslog( LOG_NOTICE, "%s: couldn't set %s\n", config.judgecode, temp);
-				return EXIT_FAILURE;
-			}
-			ptr = strtok(NULL, ", ");
-		}
-		sprintf(temp,"%d",config.inetport);
-		if( setenv("JUDGE_INETPORT", temp, 1) != 0 ) {
-			syslog( LOG_NOTICE, "%s: couldn't set JUDGE_INETPORT\n", config.judgecode);
-			return EXIT_FAILURE;
-		}
 	}
 
 /*
@@ -373,6 +263,117 @@ int main(int argc, char **argv)
 	if (msgid < 0) {
 		syslog( LOG_NOTICE, "%s: couldn't greate IPC-MessageID.\n", config.judgecode);
 		return EXIT_FAILURE;
+	}
+
+// set enviroment
+
+	if (config.judgeuid > 0) {
+		sprintf(temp,"%d",config.judgeuid);
+		if( setenv("JUDGE_UID", temp, 1) != 0 ) {
+			syslog( LOG_NOTICE, "%s: couldn't set JUDGE_UID\n", config.judgecode);
+			return EXIT_FAILURE;
+		}
+	} else if (config.judgeuid < 0) {
+		syslog( LOG_NOTICE, "%s: no User/UID found in configfile. exit.\n", config.judgecode);
+		return EXIT_FAILURE;
+	}
+
+	if (config.judgegid > 0) {
+		sprintf(temp,"%d",config.judgegid);
+		if( setenv("JUDGE_GID", temp, 1) != 0 ) {
+			syslog( LOG_NOTICE, "%s: couldn't set JUDGE_GID\n", config.judgecode);
+			return EXIT_FAILURE;
+		}
+	} else if (config.judgegid < 0) {
+		syslog( LOG_NOTICE, "%s: no Group/GID found in configfile. exit.\n", config.judgecode);
+		return EXIT_FAILURE;
+	}
+
+	if (strlen(config.judgedir) > 0) {
+		if( setenv("JUDGE_DIR", config.judgedir, 1) != 0 ) {
+			syslog( LOG_NOTICE, "%s: couldn't set JUDGE_DIR\n", config.judgecode);
+			return EXIT_FAILURE;
+		}
+	} else {
+		syslog( LOG_NOTICE, "%s: no directory found in configfile. exit.\n", config.judgecode);
+		return EXIT_FAILURE;
+	}
+
+	if (strlen(config.judgecode) > 0) {
+		if( setenv("JUDGE_CODE", config.judgecode, 1) != 0 ) {
+			syslog( LOG_NOTICE, "%s: couldn't set JUDGE_CODE\n", config.judgecode);
+			return EXIT_FAILURE;
+		}
+	} else {
+		syslog( LOG_NOTICE, "%s: no judgecode found in configfile. exit.\n", config.judgecode);
+		return EXIT_FAILURE;
+	}
+
+	if (strlen(config.ourselves) > 0) {
+		if( setenv("JUDGE_SELVE", config.ourselves, 1) != 0 ) {
+			syslog( LOG_NOTICE, "%s: couldn't set JUDGE_SELVE\n", config.judgecode);
+			return EXIT_FAILURE;
+		}
+	} else {
+		syslog( LOG_NOTICE, "%s: no address for ourselve found in configfile. exit.\n", config.judgecode);
+		return EXIT_FAILURE;
+	}
+
+	if (strlen(config.judgekeeper) > 0) {
+		if( setenv("JUDGE_KEEPER", config.judgekeeper, 1) != 0 ) {
+			syslog( LOG_NOTICE, "%s: couldn't set JUDGE_KEEPER\n", config.judgecode);
+			return EXIT_FAILURE;
+		}
+	} else {
+		syslog( LOG_NOTICE, "%s: no address for judgekeeper found in configfile. exit.\n", config.judgecode);
+		return EXIT_FAILURE;
+	}
+
+	if (strlen(config.gateway) > 0) {
+		if (setenv("JUDGE_GATEWAY", config.gateway, 1) != 0 ) {
+			syslog( LOG_NOTICE, "%s: couldn't set JUDGE_GATEWAY\n", config.judgecode);
+			return EXIT_FAILURE;
+		}
+	} else {
+		syslog( LOG_NOTICE, "%s: no address for gateway found in configfile. exit.\n", config.judgecode);
+		return EXIT_FAILURE;
+	}
+
+	if (strlen(config.fifofile) > 0 && config.fifochilds > 0) {
+		sprintf(temp,"%d",config.fifochilds);
+		if( setenv("JUDGE_FIFOCHILDS", temp, 1) != 0 ) {
+			syslog( LOG_NOTICE, "%s: couldn't set JUDGE_FIFOCHILDS\n", config.judgecode);
+			return EXIT_FAILURE;
+		}
+		if( setenv("JUDGE_FIFO", config.fifofile, 1) != 0 ) {
+			syslog( LOG_NOTICE, "%s: couldn't set JUDGE_FIFO\n", config.judgecode);
+			return EXIT_FAILURE;
+		}
+	}
+
+	if (strlen(config.unixsocket) > 0) {
+		if( setenv("JUDGE_UNIX", config.unixsocket, 1) != 0 ) {
+			syslog( LOG_NOTICE, "%s: couldn't set JUDGE_UNIX\n", config.judgecode);
+			return EXIT_FAILURE;
+		}
+	}
+
+	if (strlen(config.inetsocket) > 0 && config.inetport > 0) {
+		i=0;
+		ptr = strtok(config.inetsocket, ", ");
+		while(ptr != NULL) {
+			sprintf(temp, "JUDGE_INET%d", i++);
+			if( setenv(temp, ptr, 1) != 0 ) {
+				syslog( LOG_NOTICE, "%s: couldn't set %s\n", config.judgecode, temp);
+				return EXIT_FAILURE;
+			}
+			ptr = strtok(NULL, ", ");
+		}
+		sprintf(temp,"%d",config.inetport);
+		if( setenv("JUDGE_INETPORT", temp, 1) != 0 ) {
+			syslog( LOG_NOTICE, "%s: couldn't set JUDGE_INETPORT\n", config.judgecode);
+			return EXIT_FAILURE;
+		}
 	}
 
 	sprintf(temp,"%d",ipc_key);
@@ -467,7 +468,7 @@ int main(int argc, char **argv)
 
 /* Childprocess for UNIX */
 			else {
-				execlp("./judge-socket", "judge-sock", config.judgecode, config.unixsocket, NULL);
+				execlp("./judge-sock", "judge-sock", config.judgecode, config.unixsocket, NULL);
 //				sprintf(temp, "judge-unix %s %s", config.judgecode, config.unixsocket);
 //				execlp("./judge-env", temp, "/tmp/unix-env.txt", NULL);
 			}
@@ -501,7 +502,7 @@ int main(int argc, char **argv)
 						if( setenv("JUDGE_INET", getenv(temp), 1) != 0 ) {
 							syslog( LOG_NOTICE, "%s: couldn't set JUDGE_INET\n", config.judgecode);
 						}
-						execlp("./judge-socket", "judge-sock", config.judgecode, getenv(temp), NULL);
+						execlp("./judge-sock", "judge-sock", config.judgecode, getenv(temp), NULL);
 //						sprintf(temp, "judge-inet %s %s", config.judgecode, getenv(temp));
 //						execlp("./judge-env", temp, "/tmp/inet-env.txt", NULL);
 					}
