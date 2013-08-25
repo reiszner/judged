@@ -35,6 +35,7 @@ struct wakeup {
 };
 
 static int run = 1;
+static int conf = 0;
 
 /*
  *
@@ -43,8 +44,13 @@ static int run = 1;
  */
 
 static void master_term (int signr) {
-	syslog(LOG_NOTICE, "%s: signal terminate received.", config.judgecode);
+	syslog(LOG_NOTICE, "%s: SIGTERM received. prepare to quit...\n", config.judgecode);
 	run = 0;
+}
+
+static void master_conf (int signr) {
+	syslog(LOG_NOTICE, "%s: SIGHUP received. reread configfile...\n", config.judgecode);
+	conf = 1;
 }
 
 /*
@@ -70,17 +76,17 @@ static void start_daemon (const char *log_name, int facility) {
 	openlog ( log_name, LOG_PID | LOG_CONS | LOG_NDELAY, facility );
 }
 
-int cleanup(int semid, int msgid, int childs, pid_t *pid_childs) {
+int cleanup(int semid, int msgid, pid_t *pid_childs) {
 
-// send all childs SIGQUIT (3)
+// send all childs SIGTERM (15)
 
 	int run = 0, res, i;
-	for (i = 0 ; i < childs ; i++) {
+	for (i = 0 ; i < 7 ; i++) {
 		if (pid_childs[i] > 0) {
 			if (i==0)      syslog(LOG_NOTICE, "%s: sending 'SIGTERM' to fifo-child (%d)\n", config.judgecode, pid_childs[i]);
 			else if (i==1) syslog(LOG_NOTICE, "%s: sending 'SIGTERM' to unix-child (%d)\n", config.judgecode, pid_childs[i]);
 			else           syslog(LOG_NOTICE, "%s: sending 'SIGTERM' to inet-child (%d)\n", config.judgecode, pid_childs[i]);
-			kill (pid_childs[i], 15);
+			kill (pid_childs[i], SIGTERM);
 			run++;
 		}
 	}
@@ -89,7 +95,7 @@ int cleanup(int semid, int msgid, int childs, pid_t *pid_childs) {
 		res = waitpid (-1, NULL, WNOHANG);
 		if (res < 0) syslog(LOG_NOTICE, "%s: error while waitpid. errorcode: %d\n", config.judgecode, res);
 		else if (res > 0) {
-			for (i = 0 ; i < childs ; i++) {
+			for (i = 0 ; i < 7 ; i++) {
 				if (res == pid_childs[i]) {
 					if (i==0)      syslog(LOG_NOTICE, "%s: fifo-child ended (%d)\n", config.judgecode, pid_childs[i]);
 					else if (i==1) syslog(LOG_NOTICE, "%s: unix-child ended (%d)\n", config.judgecode, pid_childs[i]);
@@ -123,15 +129,15 @@ int main(int argc, char **argv)
 	struct wakeup tmwake;
 
 
-	int master_sort = 0, master_mark = 0, semid = 0, msgid = 0, childs, res, i, j;
+	int master_sort = 0, master_mark = 0, semid = 0, msgid = 0, res, i, j;
 	key_t ipc_key;
 	FILE *fp_dip = NULL, *fp_master, *fp_temp;
 	time_t now, wake;
 	char gamename[1000][16], buffer[MSGLEN];
 	pid_t pid;
-	char temp[1024], *ptr;
+	char temp[1024];
 	int run = 1;
-
+	pid_t pid_childs[6];
 
 	if ( argc < 2 ) {
 		fprintf(stderr, "No configfile specified.\nUsage: %s <configfile>\n",argv[0]);
@@ -140,52 +146,23 @@ int main(int argc, char **argv)
 	config.file[0] = '\0';
 	strcat(config.file, argv[1]);
 
+/*
+ *
+ * we go now in background
+ *
+ */
+
+	start_daemon("judged", LOG_DAEMON);
+
+// read the configfile
+
 	if (read_config(&config) == NULL) {
-		fprintf(stderr, "Couldn't read configfile '%s'. Is it existing?\n",config.file);
-		return EXIT_FAILURE;
-	}
-
-
-
-	printf("JudgeUser  : %s\n",config.judgeuser);
-	printf("JudgeUID   : %d\n",config.judgeuid);
-	printf("JudgeGroup : %s\n",config.judgegroup);
-	printf("JudgeGID   : %d\n",config.judgegid);
-	printf("JudgeDir   : %s\n",config.judgedir);
-	printf("JudgeCode  : %s\n",config.judgecode);
-	printf("Ourselves  : %s\n",config.ourselves);
-	printf("Judgekeeper: %s\n",config.judgekeeper);
-	printf("Gateway    : %s\n",config.gateway);
-	printf("PID-File   : %s\n",config.pidfile);
-	printf("UNIX-Socket: %s\n",config.unixsocket);
-	printf("INET-Socket: %s\n",config.inetsocket);
-	printf("INET-Port  : %d\n",config.inetport);
-	printf("FIFO-File  : %s\n",config.fifofile);
-	printf("FIFO-Childs: %d\n",config.fifochilds);
-	printf("InputLog   : %d\n",config.loginput);
-	printf("OutputLog  : %d\n",config.logoutput);
-
-// check if we are runable
-
-	if (config.judgeuid == 0) {
-		printf("%s will not run as user '%s' (UID: %d).\n", argv[0], config.judgeuser, config.judgeuid);
-		printf("please specify 'JudgeUser' in configfile '%s'. exit!\n", config.file);
-		return EXIT_FAILURE;
-	}
-
-	if (config.judgegid == 0) {
-		printf("%s will not run as group '%s' (GID: %d).\n", argv[0], config.judgegroup, config.judgegid);
-		printf("please specify 'JudgeGroup' in configfile '%s'. exit!\n", config.file);
-		return EXIT_FAILURE;
-	}
-
-	if (strlen(config.unixsocket) == 0 && strlen(config.inetsocket) == 0 && strlen(config.fifofile) == 0 ) {
-		printf("We have no canal to communicate. exit!\n");
+		syslog( LOG_NOTICE, "%s: error while read configfile '%s'. exit.\n", config.judgecode, config.file);
 		return EXIT_FAILURE;
 	}
 
 // prepare for childs
-
+/*
 	childs=2;
 
 	if (strlen(config.inetsocket) > 0) {
@@ -198,8 +175,6 @@ int main(int argc, char **argv)
 		}
 	}
 
-	pid_t pid_childs[childs];
-
 	if (strlen(config.fifofile) > 0 && config.fifochilds > 0) pid_childs[0] = 0;
 	else pid_childs[0] = -1;
 
@@ -209,6 +184,7 @@ int main(int argc, char **argv)
 	if (strlen(config.inetsocket) > 0) {
 		for (i = 2 ; i < childs ; i++) pid_childs[i] = 0;
 	}
+*/
 
 /*
  *
@@ -219,36 +195,27 @@ int main(int argc, char **argv)
 	umask (0133);
 	if((fp_temp = fopen(config.pidfile,"r")) == NULL) {
 		if((fp_temp = fopen(config.pidfile,"w")) == NULL) {
-			printf("can't create pidfile '%s'. exit.\n",config.pidfile);
+			syslog( LOG_NOTICE, "%s: can't create pidfile '%s'. exit.\n", config.judgecode, config.pidfile);
 			return EXIT_FAILURE;
 		}
 		else {
 			fclose(fp_temp);
 			if (chown(config.pidfile, config.judgeuid, config.judgegid) != 0) {
-				printf("can't change user and/or group of pidfile '%s'. exit.\n",config.pidfile);
+				syslog( LOG_NOTICE, "%s: can't change user and/or group of pidfile '%s'. exit.\n", config.judgecode, config.pidfile);
 				return EXIT_FAILURE;
 			}
 		}
 	}
 	else {
-		printf("existing pidfile '%s'. exit.\n",config.pidfile);
+		syslog( LOG_NOTICE, "%s: existing pidfile '%s'. exit.\n", config.judgecode, config.pidfile);
 		return EXIT_FAILURE;
 	}
 
-/*
- *
- * we go now in background
- *
- */
 
-	start_daemon("judged", LOG_DAEMON);
 
-	if(chdir(config.judgedir) == -1) {
-		syslog( LOG_NOTICE, "%s: couldn't change to directory '%s'.\n", config.judgecode, config.judgedir);
-		return EXIT_FAILURE;
-	}
 
-	ipc_key = ftok(config.pidfile, 1);
+
+	ipc_key = ftok(config.file, 1);
 	if(ipc_key == -1) {
 		syslog( LOG_NOTICE, "%s: ftok failed with errno = %d\n", config.judgecode, errno);
 		return EXIT_FAILURE;
@@ -266,7 +233,7 @@ int main(int argc, char **argv)
 	}
 
 // set enviroment
-
+/*
 	if (config.judgeuid > 0) {
 		sprintf(temp,"%d",config.judgeuid);
 		if( setenv("JUDGE_UID", temp, 1) != 0 ) {
@@ -375,6 +342,7 @@ int main(int argc, char **argv)
 			return EXIT_FAILURE;
 		}
 	}
+*/
 
 	sprintf(temp,"%d",ipc_key);
 	if( setenv("JUDGE_IPCKEY", temp, 1) != 0 ) {
@@ -394,11 +362,11 @@ int main(int argc, char **argv)
 	wake = 0;
 	tmwake.mon = tmwake.day = tmwake.hrs = tmwake.min = 0;
 	signal (SIGTERM, master_term);
+	signal (SIGHUP, master_conf);
 
 	syslog( LOG_NOTICE, "%s: started.\n", config.judgecode);
 	while(run) {
-
-		usleep (1000000 / config.fifochilds);
+		usleep (100000);
 
 /*
  * 
@@ -480,33 +448,28 @@ int main(int argc, char **argv)
  * 
  */
 
-		if (childs > 2) {
-			for (i=2 ; i < childs ; i++) {
-				if (pid_childs[i] == 0) {
-
-					if ((pid = fork ()) < 0) {
-						syslog(LOG_NOTICE, "%s: error while fork inet-child '%s'.\n", config.judgecode, ptr);
-					}
+		for (i=2 ; i < 7 ; i++) {
+			if (pid_childs[i] == 0) {
+				sprintf(temp, "JUDGE_INET%d", i-2);
+				if ((pid = fork ()) < 0) {
+					syslog(LOG_NOTICE, "%s: error while fork inet-child for '%s'.\n", config.judgecode, getenv(temp));
+				}
 
 /* Parentprocess */
-					else if (pid > 0) {
-						pid_childs[i] = pid;
-						sprintf(temp,"JUDGE_INET%d", i-2);
-						syslog(LOG_NOTICE, "%s: inet-child for '%s' forked with PID '%d'.\n", config.judgecode, getenv(temp), pid_childs[i]);
-						run++;
-					}
+				else if (pid > 0) {
+					pid_childs[i] = pid;
+					syslog(LOG_NOTICE, "%s: inet-child for '%s' forked with PID '%d'.\n", config.judgecode, getenv(temp), pid_childs[i]);
+					run++;
+				}
 
 /* Childprocess for INET */
-					else {
-						sprintf(temp, "JUDGE_INET%d", i-2);
-						if( setenv("JUDGE_INET", getenv(temp), 1) != 0 ) {
-							syslog( LOG_NOTICE, "%s: couldn't set JUDGE_INET\n", config.judgecode);
-						}
-						execlp("./judge-sock", "judge-sock", config.judgecode, getenv(temp), NULL);
-//						sprintf(temp, "judge-inet %s %s", config.judgecode, getenv(temp));
-//						execlp("./judge-env", temp, "/tmp/inet-env.txt", NULL);
+				else {
+					if( setenv("JUDGE_INET", getenv(temp), 1) != 0 ) {
+						syslog( LOG_NOTICE, "%s: couldn't set JUDGE_INET\n", config.judgecode);
 					}
-
+					execlp("./judge-sock", "judge-sock", config.judgecode, getenv(temp), NULL);
+//					sprintf(temp, "judge-inet %s %s", config.judgecode, getenv(temp));
+//					execlp("./judge-env", temp, "/tmp/inet-env.txt", NULL);
 				}
 			}
 		}
@@ -528,7 +491,7 @@ int main(int argc, char **argv)
 				syslog(LOG_NOTICE, "%s: incomming command '%s'\n", config.judgecode, msg.text);
 
 // receive 'quit'
-				if (strncmp("From quit\n", msg.text, 10) == 0) {
+				if (strncmp("From quit", msg.text, 9) == 0) {
 					run = 0;
 					syslog(LOG_NOTICE, "%s: receive 'quit'\n", config.judgecode);
 				}
@@ -657,6 +620,6 @@ int main(int argc, char **argv)
 		}
 	}
 
-	cleanup(semid, msgid, childs, &pid_childs[0]);
+	cleanup(semid, msgid, &pid_childs[0]);
 	return EXIT_SUCCESS;
 }
