@@ -11,8 +11,8 @@
 struct Config *read_config(struct Config *config)
 {
 	FILE *fp;
-	int i;
-	char buffer[1024], variable[512], *ptr;
+	int i, j;
+	char buffer[1024], variable[1024], *ptr;
 	struct passwd *user_ptr;
 	struct group *group_ptr;
 
@@ -314,7 +314,7 @@ struct Config *read_config(struct Config *config)
 		return NULL;
 	}
 
-
+	syslog( LOG_NOTICE, "%s: restart at fifo = %d\n", config->judgecode, config->restart);
 
 	ptr = getenv("JUDGE_FIFO");
 	if (ptr == NULL && strlen(config->fifofile) > 0) {
@@ -331,20 +331,12 @@ struct Config *read_config(struct Config *config)
 			syslog( LOG_NOTICE, "%s: change fifofile to '%s'\n", config->judgecode, config->fifofile);
 			config->restart |= PIPE;
 		}
+		else {
+			if (config->restart & ALL) config->restart |= PIPE;
+		}
 	}
-/*
-		sprintf(buffer,"%d",config->fifochilds);
-		if( setenv("JUDGE_FIFOCHILDS", buffer, 1) != 0 ) {
-			syslog( LOG_NOTICE, "%s: couldn't set JUDGE_FIFOCHILDS\n", config->judgecode);
-			return NULL;
-		}
-		if( setenv("JUDGE_FIFO", config->fifofile, 1) != 0 ) {
-			syslog( LOG_NOTICE, "%s: couldn't set JUDGE_FIFO\n", config->judgecode);
-			return NULL;
-		}
-*/
 
-
+	syslog( LOG_NOTICE, "%s: restart at unix = %d\n", config->judgecode, config->restart);
 
 	ptr = getenv("JUDGE_UNIX");
 	if (ptr == NULL && strlen(config->unixsocket) > 0) {
@@ -361,54 +353,63 @@ struct Config *read_config(struct Config *config)
 			syslog( LOG_NOTICE, "%s: change unixsocket to '%s'\n", config->judgecode, config->unixsocket);
 			config->restart |= UNIX;
 		}
-	}
-/*
-	if( setenv("JUDGE_UNIX", config->unixsocket, 1) != 0 ) {
-		syslog( LOG_NOTICE, "%s: couldn't set JUDGE_UNIX\n", config->judgecode);
-		return NULL;
-	}
-*/
-
-
-
-	if (strlen(config->inetsocket) > 0 && config->inetport > 0) {
-		ptr = strtok(config->inetsocket, ", ");
-		while(ptr != NULL) {
-			for (i = 0 ; i < 5 ; i++) {
-				sprintf(buffer, "JUDGE_INET%d", i);
-				if ( strcmp(ptr, getenv(buffer)) == 0 ) break;
-			}
-
-
-
-			
-			if( setenv(buffer, ptr, 1) != 0 ) {
-				syslog( LOG_NOTICE, "%s: couldn't set %s\n", config->judgecode, buffer);
-				return NULL;
-			}
-
-
-			ptr = strtok(NULL, ", ");
+		else {
+			if (config->restart & ALL) config->restart |= UNIX;
 		}
 	}
 
-	if (strlen(config->inetsocket) > 0 && config->inetport > 0) {
-		i=0;
-		ptr = strtok(config->inetsocket, ", ");
-		while(ptr != NULL) {
-			sprintf(buffer, "JUDGE_INET%d", i++);
-			if( setenv(buffer, ptr, 1) != 0 ) {
-				syslog( LOG_NOTICE, "%s: couldn't set %s\n", config->judgecode, buffer);
-				return NULL;
-			}
-			ptr = strtok(NULL, ", ");
+	syslog( LOG_NOTICE, "%s: restart at inet = %d\n", config->judgecode, config->restart);
+
+	i=0;
+	ptr = strtok(config->inetsocket, ", ");
+	while(ptr != NULL) {
+		sscanf(ptr,"%s",&variable[i*128]);
+		ptr = strtok(NULL, ", ");
+		i++;
+	}
+	for (; i < 5 ; i++) variable[i*128] = '\0';
+
+	for (i = 0 ; i < 5 ; i++) {
+		sprintf(buffer, "JUDGE_INET%d", i);
+		for (j=0 ; j < 5 ; j++) {
+			if ( strlen(&variable[j*128]) > 0 && strcmp(&variable[j*128], getenv(buffer)) == 0 )
+				break;
 		}
+		if (j < 5) variable[j*128] = '\0';
+		else unsetenv(buffer);
+	}
+
+	for (i = 0 ; i < 5 ; i++) {
+		for (j=0 ; j < 5 ; j++) {
+			sprintf(buffer, "JUDGE_INET%d", j);
+			if ( getenv(buffer) == NULL && strlen(&variable[i*128]) > 0 ) {
+				syslog( LOG_NOTICE, "%s: set %s to '%s' (%d)\n", config->judgecode, buffer, &variable[i*128], (int)strlen(&variable[i*128]));
+				if( setenv(buffer, &variable[i*128], 1) != 0 ) {
+					syslog( LOG_NOTICE, "%s: couldn't set %s\n", config->judgecode, buffer);
+					return NULL;
+				}
+				config->restart |= (INET << j);
+			}
+			if (config->restart & ALL) config->restart |= (INET << j);
+		}
+	}
+
+	syslog( LOG_NOTICE, "%s: restart at port = %d\n", config->judgecode, config->restart);
+
+	ptr = getenv("JUDGE_INETPORT");
+	if (ptr != 0) sscanf(ptr,"%d",&j);
+	else j = 0;
+	if (config->inetport != j) {
 		sprintf(buffer,"%d",config->inetport);
 		if( setenv("JUDGE_INETPORT", buffer, 1) != 0 ) {
 			syslog( LOG_NOTICE, "%s: couldn't set JUDGE_INETPORT\n", config->judgecode);
 			return NULL;
 		}
+		for (i = 0 ; i < 5 ; i++) config->restart |= (INET << i);
 	}
 
+	syslog( LOG_NOTICE, "%s: restart at end1 = %d\n", config->judgecode, config->restart);
+	config->restart &= (255 - ALL);
+	syslog( LOG_NOTICE, "%s: restart at end2 = %d\n", config->judgecode, config->restart);
 	return config;
 }

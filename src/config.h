@@ -18,9 +18,7 @@
 #define PIPE 1
 #define UNIX 2
 #define INET 4
-#define ALL 127
-#define PID 128
-
+#define ALL 128
 
 struct Config {
 	char file[1024];
@@ -41,7 +39,7 @@ struct Config {
 	int  fifochilds;
 	int  loginput;
 	int  logoutput;
-	int  restart;
+	unsigned int restart;
 } config;
 
 struct Config *read_config(struct Config *);
