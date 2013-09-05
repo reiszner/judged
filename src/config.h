@@ -9,7 +9,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <syslog.h>
 #include <pwd.h>
 #include <grp.h>
 
@@ -40,6 +39,6 @@ struct Config {
 	int  loginput;
 	int  logoutput;
 	unsigned int restart;
-} config;
+};
 
-struct Config *read_config(struct Config *);
+struct Config *read_config(struct Config *, struct Config *);

@@ -39,3 +39,13 @@ int chowngrp(int uid, int gid)
 	}
 	return 0;
 }
+
+void output(int lvl, char *string) {
+	if (getppid() == 1) {
+		syslog( lvl, "%s", string);
+	}
+	else {
+		if (lvl > 3) fprintf(stdout, "Info: %s", string);
+		else fprintf(stderr, "Error: %s", string);
+	}
+}

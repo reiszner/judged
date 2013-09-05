@@ -9,9 +9,12 @@
 #include <ctype.h>
 #include <signal.h>
 #include <unistd.h>
+#include <stdio.h>
+#include <syslog.h>
 
 typedef void (sigfunk) (int);
 
 sigfunk *signal (int, sigfunk);
 void strtolower (char *);
 int chowngrp(int, int);
+void output(int, char *);
