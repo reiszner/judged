@@ -6,6 +6,7 @@
  *  <reiszner@novaplan.at>
  ****************************************************************************/
 
+#include "string_wcs.h"
 #include "misc.h"
 
 sigfunk *signal (int sig_nr, sigfunk signalhandler) {
@@ -40,6 +41,8 @@ int chowngrp(int uid, int gid)
 	return 0;
 }
 
+
+
 void output(int lvl, char *string) {
 	if (getppid() == 1) {
 		syslog( lvl, "%s", string);
@@ -49,3 +52,5 @@ void output(int lvl, char *string) {
 		else fprintf(stderr, "Error: %s", string);
 	}
 }
+
+

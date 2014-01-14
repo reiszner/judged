@@ -6,13 +6,17 @@
  *  <reiszner@novaplan.at>
  ****************************************************************************/
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <ctype.h>
 #include <signal.h>
 #include <unistd.h>
-#include <stdio.h>
 #include <syslog.h>
 
 typedef void (sigfunk) (int);
+
+
 
 sigfunk *signal (int, sigfunk);
 void strtolower (char *);

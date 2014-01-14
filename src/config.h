@@ -12,8 +12,6 @@
 #include <pwd.h>
 #include <grp.h>
 
-#include "misc.h"
-
 #define PIPE 1
 #define UNIX 2
 #define INET 4
@@ -27,9 +25,11 @@ struct Config {
 	int  judgegid;
 	char judgedir[1024];
 	char judgecode[8];
-	char ourselves[128];
+	char judgename[128];
+	char judgeaddr[128];
 	char judgekeeper[128];
 	char gateway[128];
+	char sendmail[128];
 	char pidfile[128];
 	char unixsocket[128];
 	char inetsocket[128];

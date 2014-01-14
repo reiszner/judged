@@ -25,6 +25,7 @@
 #include "misc.h"
 #include "config.h"
 #include "ipc.h"
+#include "incoming.h"
 
 struct wakeup {
 	int mon;
@@ -170,11 +171,15 @@ void config_out(struct Config *config, struct Config *params)
 	output(LOG_NOTICE, string_out);
 	sprintf(string_out, "Code:     %s\n", config->judgecode);
 	output(LOG_NOTICE, string_out);
-	sprintf(string_out, "Ourselve: %s\n", config->ourselves);
+	sprintf(string_out, "Name: %s\n", config->judgename);
+	output(LOG_NOTICE, string_out);
+	sprintf(string_out, "Address: %s\n", config->judgeaddr);
 	output(LOG_NOTICE, string_out);
 	sprintf(string_out, "Keeper:   %s\n", config->judgekeeper);
 	output(LOG_NOTICE, string_out);
 	sprintf(string_out, "Gateway:  %s\n", config->gateway);
+	output(LOG_NOTICE, string_out);
+	sprintf(string_out, "Sendmail:  %s\n", config->sendmail);
 	output(LOG_NOTICE, string_out);
 	sprintf(string_out, "PID-File: %s\n", config->pidfile);
 	output(LOG_NOTICE, string_out);
@@ -205,11 +210,15 @@ void config_out(struct Config *config, struct Config *params)
 	output(LOG_NOTICE, string_out);
 	sprintf(string_out, "Code:     %s\n", params->judgecode);
 	output(LOG_NOTICE, string_out);
-	sprintf(string_out, "Ourselve: %s\n", params->ourselves);
+	sprintf(string_out, "Name: %s\n", params->judgename);
+	output(LOG_NOTICE, string_out);
+	sprintf(string_out, "Address: %s\n", params->judgeaddr);
 	output(LOG_NOTICE, string_out);
 	sprintf(string_out, "Keeper:   %s\n", params->judgekeeper);
 	output(LOG_NOTICE, string_out);
 	sprintf(string_out, "Gateway:  %s\n", params->gateway);
+	output(LOG_NOTICE, string_out);
+	sprintf(string_out, "Sendmail:  %s\n", params->sendmail);
 	output(LOG_NOTICE, string_out);
 	sprintf(string_out, "PID-File: %s\n", params->pidfile);
 	output(LOG_NOTICE, string_out);
@@ -223,15 +232,16 @@ void config_out(struct Config *config, struct Config *params)
 	output(LOG_NOTICE, string_out);
 	sprintf(string_out, "Childs:   %d\n", params->fifochilds);
 	output(LOG_NOTICE, string_out);
-	sprintf(string_out, "Ilog:     %d\n", params->loginput);
+	sprintf(string_out, "I-Log:    %d\n", params->loginput);
 	output(LOG_NOTICE, string_out);
-	sprintf(string_out, "Olog:     %d\n", params->logoutput);
+	sprintf(string_out, "O-Log:    %d\n", params->logoutput);
 	output(LOG_NOTICE, string_out);
 	sprintf(string_out, "Flag:     %d\n", params->restart);
 	output(LOG_NOTICE, string_out);
 }
 
 void help() {
+	printf("\nOptions:\n");
 	printf("  -D         daemonize\n");
 	printf("  -f <file>  configfile to load\n");
 	printf("  -h         this helptext\n");
@@ -243,7 +253,6 @@ int main(int argc, char **argv)
 {
 
 	struct message msg;
-	struct msqid_ds msgstat;
 	struct tm *tmnow;
 	struct wakeup tmwake;
 
@@ -271,9 +280,11 @@ int main(int argc, char **argv)
 	config.judgegid = -1;
 	config.judgedir[0] = '\0';
 	config.judgecode[0] = '\0';
-	config.ourselves[0] = '\0';
+	config.judgename[0] = '\0';
+	config.judgeaddr[0] = '\0';
 	config.judgekeeper[0] = '\0';
 	config.gateway[0] = '\0';
+	config.sendmail[0] = '\0';
 	config.pidfile[0] = '\0';
 	config.unixsocket[0] = '\0';
 	config.inetsocket[0] = '\0';
@@ -306,18 +317,10 @@ int main(int argc, char **argv)
 				break;
 
 			case '?':
-/*
-				if (optopt == 'f')
-					fprintf (stderr, "missing configfile for option  '-%c'.\n", optopt);
-				else if (isprint (optopt))
-					fprintf (stderr, "unknown option `%c'.\n", optopt);
-				else
-					fprintf (stderr, "unknown option character `\\x%x'.\n", optopt);
-*/
 				return EXIT_FAILURE;
 
 			default:
-				abort ();
+				abort();
 
 		}
 
@@ -368,8 +371,6 @@ int main(int argc, char **argv)
 
 	config_out(&config, &params);
 
-	return EXIT_SUCCESS;
-
 /*
  *
  * create PID-file
@@ -411,7 +412,12 @@ int main(int argc, char **argv)
 
 	semid = init_semaphore (ipc_key);
 	if (semid < 0) {
-		sprintf( string_out, "%s: couldn't greate IPC-SemaphoreID.\n", config.judgecode);
+		sprintf( string_out, "%s: couldn't greate DIP-SemaphoreID.\n", config.judgecode);
+		output(LOG_ERR, string_out);
+		return EXIT_FAILURE;
+	}
+	if (semctl (semid, 0, SETVAL, (int) 1) == -1) {
+		sprintf( string_out, "%s: couldn't initialize DIP-SemaphoreID.\n", config.judgecode);
 		output(LOG_ERR, string_out);
 		return EXIT_FAILURE;
 	}
@@ -522,6 +528,7 @@ int main(int argc, char **argv)
 			if (res < 0) {
 				sprintf(string_out, "%s: error while waitpid. errorcode: %d\n", config.judgecode, res);
 				output(LOG_ERR, string_out);
+				childs--;
 			}
 			else if (res > 0) {
 				for (i = 0 ; pid_childs[i] ; i++) {
@@ -665,41 +672,59 @@ int main(int argc, char **argv)
  * 
  */
 
-		msgctl(msgid, IPC_STAT, &msgstat);
-//		sprintf(string_out, "%s: check messagequeue. %ld\n", config.judgecode, msgstat.msg_qnum);
-//		output(LOG_NOTICE, string_out);
-		if (msgstat.msg_qnum > 0) {
-			if ((res = msgrcv(msgid, &msg, MSGLEN, 0, 0)) < 0 ) {
-				sprintf(string_out, "%s: error %d while reading messagequeue - %d\n", config.judgecode, res, errno);
+		res = msgrcv(msgid, &msg, MSGLEN, 1, IPC_NOWAIT);
+		if (res < 0) {
+			if (errno != ENOMSG) {
+				sprintf(string_out, "%s: error %d while reading messagequeue! res = %d\n", config.judgecode, errno, res);
 				output(LOG_ERR, string_out);
-				return EXIT_FAILURE;
+//				return EXIT_FAILURE;
 			}
-			else {
-				sprintf(string_out, "%s: incomming command '%s' (%ld)\n", config.judgecode, msg.text, strlen(msg.text));
-				output(LOG_NOTICE, string_out);
+		}
+		else {
+			sprintf(string_out, "%s: incomming command '%s' (%ld)\n", config.judgecode, msg.text, strlen(msg.text));
+			output(LOG_NOTICE, string_out);
 
 // receive 'quit'
-				if (strncmp("From quit", msg.text, 9) == 0) {
-					run = 0;
-					sprintf(string_out, "%s: receive 'quit'\n", config.judgecode);
-					output(LOG_NOTICE, string_out);
-				}
+			if (strncmp("From quit", msg.text, 9) == 0) {
+				run = 0;
+				sprintf(string_out, "%s: receive 'quit'\n", config.judgecode);
+				output(LOG_NOTICE, string_out);
+			}
 
 // receive 'atrun'
-				if (strncmp("From atrun ", msg.text, 11) == 0) {
-					sprintf(string_out, "%s: receive 'atrun'\n", config.judgecode);
+			if (strncmp("From atrun ", msg.text, 11) == 0) {
+				sprintf(string_out, "%s: receive 'atrun'\n", config.judgecode);
+				output(LOG_NOTICE, string_out);
+				sscanf(msg.text + 11,"%ld", &wake);
+				tmnow = localtime(&wake);
+				tmwake.mon = tmnow->tm_mon;
+				tmwake.day = tmnow->tm_mday;
+				tmwake.hrs = tmnow->tm_hour;
+				tmwake.min = tmnow->tm_min;
+				sprintf(string_out, "%s: trigger set to '%d.%d. %02d:%02d (%ld)'.\n", config.judgecode, tmwake.day, tmwake.mon + 1, tmwake.hrs, tmwake.min, wake);
+				output(LOG_NOTICE, string_out);
+			}
+
+			if (strncmp("MESSAGE", msg.text, 7) == 0) {
+				if ((pid = fork ()) < 0) {
+					sprintf( string_out, "%s: error while fork judge-child.\n", config.judgecode);
+					output(LOG_ERR, string_out);
+					run = 0;
+				}
+/* Parentprocess */
+				else if (pid > 0) {
+					sprintf( string_out, "%s: judge-child forked with PID '%d'.\n", config.judgecode, pid);
 					output(LOG_NOTICE, string_out);
-					sscanf(msg.text + 11,"%ld", &wake);
-					tmnow = localtime(&wake);
-					tmwake.mon = tmnow->tm_mon;
-					tmwake.day = tmnow->tm_mday;
-					tmwake.hrs = tmnow->tm_hour;
-					tmwake.min = tmnow->tm_min;
-					sprintf(string_out, "%s: trigger set to '%d.%d. %02d:%02d (%ld)'.\n", config.judgecode, tmwake.day, tmwake.mon + 1, tmwake.hrs, tmwake.min, wake);
-					output(LOG_NOTICE, string_out);
+				}
+/* Childprocess */
+				else {
+					sscanf(msg.text + 7,"%d",&res);
+					incoming(res);
+					return 0;
 				}
 			}
 		}
+
 
 /*
  * 
@@ -707,7 +732,7 @@ int main(int argc, char **argv)
  * 
  */
 
-		if (semctl (semid, DIP, GETVAL, 0) == UNLOCK) {
+		if (semctl (semid, 0, GETVAL, 0) == UNLOCK) {
 			time(&now);
 			tmnow = localtime(&now);
 
@@ -715,7 +740,7 @@ int main(int argc, char **argv)
 			if (tmnow->tm_min != 59 && master_sort != 0)
 				master_sort = 0;
 			if (tmnow->tm_min == 59 && master_sort == 0) {
-				semaphore_operation (semid, DIP, LOCK);
+				semaphore_operation (semid, 0, LOCK);
 				sprintf( string_out, "%s: sort dip.master\n", config.judgecode);
 				output(LOG_NOTICE, string_out);
 				master_mark = 0;
@@ -767,12 +792,12 @@ int main(int argc, char **argv)
 				fclose(fp_master);
 				fclose(fp_temp);
 				master_sort = 1;
-				semaphore_operation (semid, DIP, UNLOCK);
+				semaphore_operation (semid, 0, UNLOCK);
 			}
 
 // force timer
 			if (now > wake) {
-				semaphore_operation (semid, DIP, LOCK);
+				semaphore_operation (semid, 0, LOCK);
 				sprintf(temp, "%sdip -x", config.judgedir);
 				sprintf( string_out, "%s: have no trigger, force one. '%s'\n", config.judgecode, temp);
 				output(LOG_NOTICE, string_out);
@@ -792,12 +817,12 @@ int main(int argc, char **argv)
 				tmwake.min = tmnow->tm_min + 1;
 				tmwake.mon = tmnow->tm_mon;
 				tmwake.day = tmnow->tm_mday;
-				semaphore_operation (semid, DIP, UNLOCK);
+				semaphore_operation (semid, 0, UNLOCK);
 			}
 
 // trigger timer
 			if (tmnow->tm_hour == tmwake.hrs && tmnow->tm_min == tmwake.min && tmnow->tm_mon == tmwake.mon && tmnow->tm_mday == tmwake.day) {
-				semaphore_operation (semid, DIP, LOCK);
+				semaphore_operation (semid, 0, LOCK);
 				sprintf(temp, "%sdip -x", config.judgedir);
 				sprintf( string_out, "%s: trigger '%s'\n", config.judgecode, temp);
 				output(LOG_NOTICE, string_out);
@@ -817,7 +842,7 @@ int main(int argc, char **argv)
 				tmwake.min = tmnow->tm_min + 1;
 				tmwake.mon = tmnow->tm_mon;
 				tmwake.day = tmnow->tm_mday;
-				semaphore_operation (semid, DIP, UNLOCK);
+				semaphore_operation (semid, 0, UNLOCK);
 			}
 		}
 	}

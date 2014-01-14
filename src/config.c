@@ -6,6 +6,7 @@
  *  <reiszner@novaplan.at>
  ****************************************************************************/
 
+#include "misc.h"
 #include "config.h"
 
 struct Config *read_config(struct Config *config_old, struct Config *params)
@@ -27,9 +28,11 @@ struct Config *read_config(struct Config *config_old, struct Config *params)
 	config.judgegid = -1;
 	config.judgedir[0] = '\0';
 	config.judgecode[0] = '\0';
-	config.ourselves[0] = '\0';
+	config.judgename[0] = '\0';
+	config.judgeaddr[0] = '\0';
 	config.judgekeeper[0] = '\0';
 	config.gateway[0] = '\0';
+	config.sendmail[0] = '\0';
 	config.pidfile[0] = '\0';
 	config.unixsocket[0] = '\0';
 	config.inetsocket[0] = '\0';
@@ -57,9 +60,11 @@ struct Config *read_config(struct Config *config_old, struct Config *params)
 		if (strncmp("judgegroup",  variable, 10) == 0) sprintf(config.judgegroup, "%s", buffer);
 		if (strncmp("judgedir",    variable,  8) == 0) sprintf(config.judgedir, "%s", buffer);
 		if (strncmp("judgecode",   variable,  9) == 0) sprintf(config.judgecode, "%s", buffer);
-		if (strncmp("ourselves",   variable,  9) == 0) sprintf(config.ourselves, "%s", buffer);
+		if (strncmp("judgename",   variable,  9) == 0) sprintf(config.judgename, "%s", buffer);
+		if (strncmp("judgeaddr",   variable,  9) == 0) sprintf(config.judgeaddr, "%s", buffer);
 		if (strncmp("judgekeeper", variable, 11) == 0) sprintf(config.judgekeeper, "%s", buffer);
 		if (strncmp("gateway",     variable,  7) == 0) sprintf(config.gateway, "%s", buffer);
+		if (strncmp("sendmail",     variable, 8) == 0) sprintf(config.sendmail, "%s", buffer);
 		if (strncmp("pid-file",    variable,  8) == 0) sprintf(config.pidfile, "%s", buffer);
 		if (strncmp("unix-socket", variable, 11) == 0) sprintf(config.unixsocket, "%s", buffer);
 		if (strncmp("inet-socket", variable, 11) == 0) sprintf(config.inetsocket, "%s", buffer);
@@ -78,9 +83,11 @@ struct Config *read_config(struct Config *config_old, struct Config *params)
 		if (strlen(params->judgegroup) > 0)  sprintf(config.judgegroup, "%s", params->judgegroup);
 		if (strlen(params->judgedir) > 0)    sprintf(config.judgedir,   "%s", params->judgedir);
 		if (strlen(params->judgecode) > 0)   sprintf(config.judgecode,  "%s", params->judgecode);
-		if (strlen(params->ourselves) > 0)   sprintf(config.ourselves,  "%s", params->ourselves);
+		if (strlen(params->judgename) > 0)   sprintf(config.judgename,  "%s", params->judgename);
+		if (strlen(params->judgeaddr) > 0)   sprintf(config.judgeaddr,  "%s", params->judgeaddr);
 		if (strlen(params->judgekeeper) > 0) sprintf(config.judgekeeper,"%s", params->judgekeeper);
 		if (strlen(params->gateway) > 0)     sprintf(config.gateway,    "%s", params->gateway);
+		if (strlen(params->sendmail) > 0)    sprintf(config.sendmail,   "%s", params->sendmail);
 		if (strlen(params->pidfile) > 0)     sprintf(config.pidfile,    "%s", params->pidfile);
 		if (strlen(params->unixsocket) > 0)  sprintf(config.unixsocket, "%s", params->unixsocket);
 		if (strlen(params->inetsocket) > 0)  sprintf(config.inetsocket, "%s", params->inetsocket);
@@ -293,20 +300,20 @@ struct Config *read_config(struct Config *config_old, struct Config *params)
 
 
 
-	if (strlen(config.ourselves) > 0) {
-		ptr = getenv("JUDGE_SELVE");
-		if (ptr != NULL) i = strcmp(ptr, config.ourselves);
+	if (strlen(config.judgename) > 0) {
+		ptr = getenv("JUDGE_NAME");
+		if (ptr != NULL) i = strcmp(ptr, config.judgename);
 		if (ptr == NULL || i != 0) {
 			if (ptr == NULL) {
-				sprintf( string_out, "%s: set ourselves to '%s'\n", config.judgecode, config.ourselves);
+				sprintf( string_out, "%s: set judgename to '%s'\n", config.judgecode, config.judgename);
 				output(LOG_NOTICE, string_out);
 			}
 			else {
-				sprintf( string_out, "%s: change ourselves to '%s'\n", config.judgecode, config.ourselves);
+				sprintf( string_out, "%s: change judgename to '%s'\n", config.judgecode, config.judgename);
 				output(LOG_NOTICE, string_out);
 			}
-			if( setenv("JUDGE_SELVE", config.ourselves, 1) != 0 ) {
-				sprintf( string_out, "%s: couldn't set JUDGE_SELVE\n", config.judgecode);
+			if( setenv("JUDGE_NAME", config.judgename, 1) != 0 ) {
+				sprintf( string_out, "%s: couldn't set JUDGE_NAME\n", config.judgecode);
 				output(LOG_ERR, string_out);
 				return NULL;
 			}
@@ -314,7 +321,35 @@ struct Config *read_config(struct Config *config_old, struct Config *params)
 		}
 	}
 	else {
-		sprintf( string_out, "%s: no address for ourselve found in configfile. exit.\n", config.judgecode);
+		sprintf( string_out, "%s: no judgename found in configfile. exit.\n", config.judgecode);
+		output(LOG_ERR, string_out);
+		return NULL;
+	}
+
+
+
+	if (strlen(config.judgeaddr) > 0) {
+		ptr = getenv("JUDGE_ADDR");
+		if (ptr != NULL) i = strcmp(ptr, config.judgeaddr);
+		if (ptr == NULL || i != 0) {
+			if (ptr == NULL) {
+				sprintf( string_out, "%s: set judgeaddr to '%s'\n", config.judgecode, config.judgeaddr);
+				output(LOG_NOTICE, string_out);
+			}
+			else {
+				sprintf( string_out, "%s: change judgeaddr to '%s'\n", config.judgecode, config.judgeaddr);
+				output(LOG_NOTICE, string_out);
+			}
+			if( setenv("JUDGE_ADDR", config.judgeaddr, 1) != 0 ) {
+				sprintf( string_out, "%s: couldn't set JUDGE_ADDR\n", config.judgecode);
+				output(LOG_ERR, string_out);
+				return NULL;
+			}
+			config.restart |= ALL;
+		}
+	}
+	else {
+		sprintf( string_out, "%s: no judgeaddr found in configfile. exit.\n", config.judgecode);
 		output(LOG_ERR, string_out);
 		return NULL;
 	}
@@ -371,6 +406,34 @@ struct Config *read_config(struct Config *config_old, struct Config *params)
 	}
 	else {
 		sprintf( string_out, "%s: no address for gateway found in configfile. exit.\n", config.judgecode);
+		output(LOG_ERR, string_out);
+		return NULL;
+	}
+
+
+
+	if (strlen(config.sendmail) > 0) {
+		ptr = getenv("JUDGE_SENDMAIL");
+		if (ptr != NULL) i = strcmp(ptr, config.sendmail);
+		if (ptr == NULL || i != 0) {
+			if (ptr == NULL) {
+				sprintf( string_out, "%s: set sendmail to '%s'\n", config.judgecode, config.sendmail);
+				output(LOG_NOTICE, string_out);
+			}
+			else {
+				sprintf( string_out, "%s: change sendmail to '%s'\n", config.judgecode, config.sendmail);
+				output(LOG_NOTICE, string_out);
+			}
+			if (setenv("JUDGE_SENDMAIL", config.sendmail, 1) != 0 ) {
+				sprintf( string_out, "%s: couldn't set JUDGE_SENDMAIL\n", config.judgecode);
+				output(LOG_ERR, string_out);
+				return NULL;
+			}
+			config.restart |= ALL;
+		}
+	}
+	else {
+		sprintf( string_out, "%s: no command for sendmail found in configfile. exit.\n", config.judgecode);
 		output(LOG_ERR, string_out);
 		return NULL;
 	}
