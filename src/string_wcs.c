@@ -17,11 +17,25 @@ wchar_t *wcs_lc(wchar_t *text) {
 
 
 
-wchar_t *wcs_trim(wchar_t *text) {
+int wcs_trim(wchar_t *dst, wchar_t *src) {
 	unsigned int i, j;
-	for (i = wcslen(text) - 1 ; iswspace(text[i]) ; i--) text[i] = 0L;
-	for (i = 0 ; iswspace(text[i]) ; i++);
-	for (j = 0 ; iswcntrl(text[i]) ; i++ , j++) text[j] = text[i];
+
+	for (i = 0 ; iswspace(src[i]) ; i++ );
+	for (j = 0 ; !iswcntrl(src[i]) ; i++, j++) dst[j] = src[i];
+	dst[j] = 0L;
+	if (wcslen(dst) < 1) return -1;
+	for (j = wcslen(dst) - 1 ; iswspace(dst[j]) ; j--) dst[j] = 0L;
+	return 0;
+}
+
+
+
+int wcs_trim2(wchar_t *text) {
+	unsigned int i, j;
+	for (i = 0 ; iswspace(text[i]) ; i++ );
+	for (j = 0 ; !iswcntrl(text[i]) ; i++, j++) text[j] = text[i];
 	text[j] = 0L;
-	return text;
+	if (wcslen(text) < 1) return -1;
+	for (j = wcslen(text) - 1 ; iswspace(text[j]) ; j--) text[j] = 0L;
+	return 0;
 }

@@ -33,16 +33,14 @@ int main(int argc, char **argv) {
 
 	struct message msg;
 
-	char judgedir[255], judgecode[255], gateway[255], fifofile[255], string_out[1024];
+	char judgecode[255], fifofile[255], string_out[1024];
 	int semid, judgeuid, judgegid, fifochilds = 0, childs = 0, judgedaemon, res, i;
 	pid_t pid;
 	key_t msg_key, sem_key;
 
 	sscanf(getenv("JUDGE_UID"), "%d", &judgeuid);
 	sscanf(getenv("JUDGE_GID"), "%d", &judgegid);
-	strcpy(judgedir, getenv("JUDGE_DIR"));
 	strcpy(judgecode, getenv("JUDGE_CODE"));
-	strcpy(gateway, getenv("JUDGE_GATEWAY"));
 	strcpy(fifofile, getenv("JUDGE_FIFO"));
 	sscanf(getenv("JUDGE_FIFOCHILDS"), "%d", &fifochilds);
 	sscanf(getenv("JUDGE_DAEMON"), "%d", &judgedaemon);
@@ -238,7 +236,7 @@ int main(int argc, char **argv) {
 
 				if(shmdata) {
 					shmdt(shmdata);
-					shmctl(shmid, IPC_RMID, 0);
+					shmctl(shmid, IPC_RMID, NULL);
 				}
 
 // Antworten !!!

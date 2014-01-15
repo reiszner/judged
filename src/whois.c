@@ -105,49 +105,80 @@ struct whois_t *read_whois(FILE *fp) {
 		else if (wcsncmp(linelc, L"postalcode: ", 12) == 0)
 			swscanf(line+12, L"%d", &whois->postalcode);
 
-		else if (wcsncmp(linelc, L"country: ", 9) == 0)
-			swscanf(line+9, L"%s", wcs_trim(whois->country));
+		else if (wcsncmp(linelc, L"country: ", 9) == 0) {
+			wcs_trim(linelc, &(line[9]));
+			wcsncpy(whois->country, linelc, wcslen(linelc));
+		}
 
-		else if (wcsncmp(linelc, L"name: ", 6) == 0)
-			swscanf(line+6, L"%s", wcs_trim(whois->name));
+		else if (wcsncmp(linelc, L"name: ", 6) == 0) {
+			wcs_trim(linelc, &(line[6]));
+			wcsncpy(whois->name, linelc, wcslen(linelc));
+		}
 
-		else if (wcsncmp(linelc, L"email: ", 7) == 0)
-			swscanf(line+7, L"%s", wcs_trim(whois->email));
+		else if (wcsncmp(linelc, L"email: ", 7) == 0) {
+			wcs_trim(linelc, &(line[7]));
+			wcsncpy(whois->email, linelc, wcslen(linelc));
+		}
 
-		else if (wcsncmp(linelc, L"level: ", 7) == 0)
-			swscanf(line+7, L"%s", wcs_trim(whois->level));
+		else if (wcsncmp(linelc, L"level: ", 7) == 0) {
+			wcs_trim(linelc, &(line[7]));
+			wcsncpy(whois->level, linelc, wcslen(linelc));
+		}
 
-		else if (wcsncmp(linelc, L"language: ", 10) == 0)
-			swscanf(line+10, L"%s", wcs_trim(whois->language));
+		else if (wcsncmp(linelc, L"language: ", 10) == 0) {
+			wcs_trim(linelc, &(line[10]));
+			wcsncpy(whois->language, linelc, wcslen(linelc));
+		}
 
-		else if (wcsncmp(linelc, L"timezone: ", 10) == 0)
-			swscanf(line+10, L"%s", wcs_trim(whois->timezone));
+		else if (wcsncmp(linelc, L"timezone: ", 10) == 0) {
+			wcs_trim(linelc, &(line[10]));
+			wcsncpy(whois->timezone, linelc, wcslen(linelc));
+		}
 
-		else if (wcsncmp(linelc, L"birth: ", 7) == 0)
-			swscanf(line+7, L"%s", wcs_trim(whois->birthday));
+		else if (wcsncmp(linelc, L"birth: ", 7) == 0) {
+			wcs_trim(linelc, &(line[7]));
+			wcsncpy(whois->birthday, linelc, wcslen(linelc));
+		}
 
-		else if (wcsncmp(linelc, L"address: ", 9) == 0)
-			swscanf(line+9, L"%s", wcs_trim(whois->address));
+		else if (wcsncmp(linelc, L"address: ", 9) == 0) {
+			wcs_trim(linelc, &(line[9]));
+			wcsncpy(whois->address, linelc, wcslen(linelc));
+		}
 
-		else if (wcsncmp(linelc, L"site: ", 6) == 0)
-			swscanf(line+6, L"%s", wcs_trim(whois->site));
+		else if (wcsncmp(linelc, L"site: ", 6) == 0) {
+			wcs_trim(linelc, &(line[6]));
+			wcsncpy(whois->site, linelc, wcslen(linelc));
+		}
 
-		else if (wcsncmp(linelc, L"phone: ", 7) == 0)
-			swscanf(line+7, L"%s", wcs_trim(whois->phone));
+		else if (wcsncmp(linelc, L"phone: ", 7) == 0) {
+			wcs_trim(linelc, &(line[7]));
+			wcsncpy(whois->phone, linelc, wcslen(linelc));
+		}
 
-		else if (wcsncmp(linelc, L"link: ", 6) == 0)
-			swscanf(line+6, L"%s", wcs_trim(whois->link));
+		else if (wcsncmp(linelc, L"link: ", 6) == 0) {
+			wcs_trim(linelc, &(line[6]));
+			wcsncpy(whois->link, linelc, wcslen(linelc));
+		}
 
-		else if (wcsncmp(linelc, L"source: ", 8) == 0)
-			swscanf(line+8, L"%s", wcs_trim(whois->source));
+		else if (wcsncmp(linelc, L"source: ", 8) == 0) {
+			wcs_trim(linelc, &(line[8]));
+			wcsncpy(whois->source, linelc, wcslen(linelc));
+		}
 
-		else if (wcsncmp(linelc, L"ip-address: ", 12) == 0)
-			swscanf(line+12, L"%s", wcs_trim(whois->ip_address));
+		else if (wcsncmp(linelc, L"ip-address: ", 12) == 0) {
+			wcs_trim(linelc, &(line[12]));
+			wcsncpy(whois->ip_address, linelc, wcslen(linelc));
+		}
 
-		else if (wcsncmp(linelc, L"interests: ", 11) == 0)
-			swscanf(line+11, L"%s", wcs_trim(whois->interests));
+		else if (wcsncmp(linelc, L"interests: ", 11) == 0) {
+			wcs_trim(linelc, &(line[11]));
+			wcsncpy(whois->interests, linelc, wcslen(linelc));
+		}
 
-		else if (wcsncmp(linelc, L"sex: ", 5) == 0)
+		else if (wcsncmp(linelc, L"sex: ", 5) == 0) {
+			wcs_trim(linelc, &(line[5]));
+			wcsncpy(whois->country, linelc, wcslen(linelc));
+		}
 			swscanf(line+5, L"%d", &whois->sex);
 
 	}

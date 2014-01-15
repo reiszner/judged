@@ -163,17 +163,10 @@ struct Config *read_config(struct Config *config_old, struct Config *params)
 		return NULL;
 	}
 
-	if (strlen(config.fifofile) == 0 && config.fifochilds > 0)
-		config.fifochilds = 0;
-	
-	if (strlen(config.fifofile) > 0 && config.fifochilds == 0)
-		config.fifofile[0] = '\0';
-
-	if (strlen(config.inetsocket) == 0 && config.inetport > 0)
-		config.inetport = 0;
-	
-	if (strlen(config.inetsocket) > 0 && config.inetport == 0)
-		config.inetsocket[0] = '\0';
+	if (strlen(config.fifofile) == 0) config.fifochilds = 0;
+	if (config.fifochilds == 0) config.fifofile[0] = '\0';
+	if (strlen(config.inetsocket) == 0) config.inetport = 0;
+	if (config.inetport == 0) config.inetsocket[0] = '\0';
 
 	if (strlen(config.unixsocket) == 0 && strlen(config.inetsocket) == 0 && strlen(config.fifofile) == 0 ) {
 		sprintf( string_out, "%s: have no canal to communicate. exit.\n", config.judgecode);
@@ -261,7 +254,6 @@ struct Config *read_config(struct Config *config_old, struct Config *params)
 				output(LOG_ERR, string_out);
 				return NULL;
 			}
-			config.restart |= ALL;
 		}
 	}
 	else {
@@ -317,7 +309,6 @@ struct Config *read_config(struct Config *config_old, struct Config *params)
 				output(LOG_ERR, string_out);
 				return NULL;
 			}
-			config.restart |= ALL;
 		}
 	}
 	else {
@@ -345,7 +336,6 @@ struct Config *read_config(struct Config *config_old, struct Config *params)
 				output(LOG_ERR, string_out);
 				return NULL;
 			}
-			config.restart |= ALL;
 		}
 	}
 	else {
@@ -373,7 +363,6 @@ struct Config *read_config(struct Config *config_old, struct Config *params)
 				output(LOG_ERR, string_out);
 				return NULL;
 			}
-			config.restart |= ALL;
 		}
 	}
 	else {
@@ -401,7 +390,6 @@ struct Config *read_config(struct Config *config_old, struct Config *params)
 				output(LOG_ERR, string_out);
 				return NULL;
 			}
-			config.restart |= ALL;
 		}
 	}
 	else {
@@ -429,7 +417,6 @@ struct Config *read_config(struct Config *config_old, struct Config *params)
 				output(LOG_ERR, string_out);
 				return NULL;
 			}
-			config.restart |= ALL;
 		}
 	}
 	else {
@@ -471,6 +458,24 @@ struct Config *read_config(struct Config *config_old, struct Config *params)
 
 	sprintf( string_out, "%s: restart at fifo = %d\n", config.judgecode, config.restart);
 	output(LOG_NOTICE, string_out);
+
+
+
+
+
+	ptr = getenv("JUDGE_FIFOCHILDS");
+	if (ptr != NULL) sscanf(ptr,"%d",&j);
+	else j = 0;
+	if (config.fifochilds != j) {
+		sprintf(buffer,"%d",config.fifochilds);
+		if( setenv("JUDGE_FIFOCHILDS", buffer, 1) != 0 ) {
+			sprintf( string_out, "%s: couldn't set JUDGE_FIFOCHILDS\n", config.judgecode);
+			output(LOG_ERR, string_out);
+			return NULL;
+		}
+		config.restart |= PIPE;
+	}
+
 
 	ptr = getenv("JUDGE_FIFO");
 	if (ptr == NULL && strlen(config.fifofile) > 0) {
@@ -521,6 +526,56 @@ struct Config *read_config(struct Config *config_old, struct Config *params)
 		}
 	}
 
+	sprintf( string_out, "%s: restart at inet (token) = %d\n", config.judgecode, config.restart);
+	output(LOG_NOTICE, string_out);
+
+	i=0;
+	strcpy(buffer, config.inetsocket);
+	ptr = strtok(buffer, ", ");
+	while(ptr != NULL) {
+		sscanf(ptr,"%s",&variable[i*128]);
+		ptr = strtok(NULL, ", ");
+		i++;
+	}
+	for (; i < 5 ; i++) variable[i*128] = '\0';
+
+	sprintf( string_out, "%s: restart at inet (old) = %d\n", config.judgecode, config.restart);
+	output(LOG_NOTICE, string_out);
+
+	for (i = 0 ; i < 5 ; i++) {
+		sprintf(buffer, "JUDGE_INET%d", i);
+		if (getenv(buffer) != NULL) {
+			for (j = 0 ; j < 5 && strcmp(&variable[j*128], getenv(buffer)) ; j++);
+			if (j == 5) {
+				unsetenv(buffer);
+				config.restart |= (INET << i);
+			}
+			else variable[j*128] = '\0';
+		}
+	}
+
+	sprintf( string_out, "%s: restart at inet (new) = %d\n", config.judgecode, config.restart);
+	output(LOG_NOTICE, string_out);
+
+	for (i = 0 ; i < 5 ; i++) {
+		if (strlen(&variable[i*128]) > 0) {
+			for (j=0 ; j < 5 ; j++) {
+				sprintf(buffer, "JUDGE_INET%d", j);
+				if (getenv(buffer) == NULL) {
+					sprintf( string_out, "%s: set %s to '%s' (%d)\n", config.judgecode, buffer, &variable[i*128], (int)strlen(&variable[i*128]));
+					output(LOG_NOTICE, string_out);
+					if( setenv(buffer, &variable[i*128], 1) != 0 ) {
+						sprintf( string_out, "%s: couldn't set %s\n", config.judgecode, buffer);
+						output(LOG_ERR, string_out);
+						return NULL;
+					}
+					config.restart |= (INET << j);
+					break;
+				}
+			}
+		}
+	}
+
 	sprintf( string_out, "%s: restart at port = %d\n", config.judgecode, config.restart);
 	output(LOG_NOTICE, string_out);
 
@@ -534,54 +589,15 @@ struct Config *read_config(struct Config *config_old, struct Config *params)
 			output(LOG_ERR, string_out);
 			return NULL;
 		}
-		config.restart |= ALL;
-//		for (i = 0 ; i < 5 ; i++) config.restart |= (INET << i);
-	}
-
-	sprintf( string_out, "%s: restart at inet = %d\n", config.judgecode, config.restart);
-	output(LOG_NOTICE, string_out);
-
-	i=0;
-	strcpy(buffer, config.inetsocket);
-	ptr = strtok(buffer, ", ");
-	while(ptr != NULL) {
-		sscanf(ptr,"%s",&variable[i*128]);
-		ptr = strtok(NULL, ", ");
-		i++;
-	}
-	for (; i < 5 ; i++) variable[i*128] = '\0';
-
-	for (i = 0 ; i < 5 ; i++) {
-		sprintf(buffer, "JUDGE_INET%d", i);
-		for (j=0 ; j < 5 ; j++) {
-			if ( strlen(&variable[j*128]) > 0 && getenv(buffer) != NULL && strcmp(&variable[j*128], getenv(buffer)) == 0 )
-				break;
-		}
-		if (j < 5) variable[j*128] = '\0';
-		else unsetenv(buffer);
-	}
-
-	for (i = 0 ; i < 5 ; i++) {
-		for (j=0 ; j < 5 ; j++) {
-			sprintf(buffer, "JUDGE_INET%d", j);
-			if ( getenv(buffer) == NULL && strlen(&variable[i*128]) > 0 ) {
-				sprintf( string_out, "%s: set %s to '%s' (%d)\n", config.judgecode, buffer, &variable[i*128], (int)strlen(&variable[i*128]));
-				output(LOG_NOTICE, string_out);
-				if( setenv(buffer, &variable[i*128], 1) != 0 ) {
-					sprintf( string_out, "%s: couldn't set %s\n", config.judgecode, buffer);
-					output(LOG_ERR, string_out);
-					return NULL;
-				}
-				config.restart |= (INET << j);
-				break;
-			}
-//			if (getenv(buffer) != NULL && config.restart & ALL) config.restart |= (INET << j);
+		for (i = 0 ; i < 5 ; i++) {
+			sprintf(buffer, "JUDGE_INET%d", i);
+			if (getenv(buffer)) config.restart |= (INET << i);
 		}
 	}
 
 	sprintf( string_out, "%s: restart at end1 = %d\n", config.judgecode, config.restart);
 	output(LOG_NOTICE, string_out);
-	config.restart &= (255 - ALL);
+	config.restart &= 127;
 	sprintf( string_out, "%s: restart at end2 = %d\n", config.judgecode, config.restart);
 	output(LOG_NOTICE, string_out);
 	sprintf(config.file, "%s", config_old->file);

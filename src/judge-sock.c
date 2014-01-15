@@ -37,7 +37,7 @@ int main(int argc, char **argv) {
 
 	struct message msg;
 
-	char judgedir[255], judgecode[255], gateway[255], socket[255], string_out[1024];
+	char judgecode[255], socket[255], string_out[1024];
 	int judgeuid, judgegid, type = NONE, status = 0, port, judgedaemon, res;
 	int fd_socket, fd_connect;
 	pid_t pid;
@@ -45,9 +45,7 @@ int main(int argc, char **argv) {
 
 	sscanf(getenv("JUDGE_UID"), "%d", &judgeuid);
 	sscanf(getenv("JUDGE_GID"), "%d", &judgegid);
-	strcpy(judgedir, getenv("JUDGE_DIR"));
 	strcpy(judgecode, getenv("JUDGE_CODE"));
-	strcpy(gateway, getenv("JUDGE_GATEWAY"));
 	sscanf(getenv("JUDGE_DAEMON"), "%d", &judgedaemon);
 	sscanf(getenv("JUDGE_IPCKEY"), "%d", &msg_key);
 
@@ -193,20 +191,6 @@ int main(int argc, char **argv) {
 			msgid = msgget (msg_key, IPC_PRIVATE);
 			if (msgid < 0) return EXIT_FAILURE;
 
-/*
-			sprintf(temp, "Judged: %s\n", judgecode);
-			cnt = strlen(temp);
-			if ( write(fd_connect, temp, cnt) != cnt) {
-				syslog( LOG_NOTICE, "%s: error while write()...(%s)\n", judgecode, strerror(errno));
-				return EXIT_FAILURE;
-			}
-
-			cnt = read(fd_connect, temp, sizeof(temp));
-			temp[cnt] = 0;
-
-			if (strncmp("message", temp, 7) == 0) {
-*/
-
 			msgbuffer = malloc(BUFFER_SIZE);
 			while ((cnt = read(fd_connect, &msgbuffer[pos * sizeof(char)], BUFFER_SIZE * sizeof(char) * blocks - pos)) > 0) {
 				pos += cnt;
@@ -273,7 +257,7 @@ int main(int argc, char **argv) {
 
 			if (shmdata) {
 				shmdt(shmdata);
-				shmctl(shmid, IPC_RMID, 0);
+				shmctl(shmid, IPC_RMID, NULL);
 			}
 
 // Antworten !!!

@@ -13,6 +13,7 @@
 #include <gmime/gmime.h>
 
 #define MSGLEN 1024
+#define BUFFER_SIZE 1024
 
 struct email_addr_t {
 	wchar_t name[256];
@@ -34,7 +35,7 @@ struct ampersand_t {
 };
 
 char *message_body;
-wchar_t *message_wide;
+wchar_t *input_wide;
 
 struct email_addr_t *get_email_addr_from(GMimeMessage *);
 int write_message(struct email_headers_t *, char *);
@@ -43,4 +44,4 @@ void *capture_message(GMimeObject *);
 void count_foreach_callback(GMimeObject *, GMimeObject *, gpointer);
 int read_message(struct email_headers_t*, char *);
 int html_to_plain(wchar_t *, wchar_t *);
-wchar_t *append_to_message(wchar_t *, wchar_t *);
+wchar_t *append_to_message(wchar_t *, wchar_t *, int *);

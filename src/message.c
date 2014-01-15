@@ -64,6 +64,8 @@ struct email_addr_t *get_email_addr_from(GMimeMessage *message) {
 
 	mbstowcs( email_addr->name, name, 256);
 	mbstowcs( email_addr->email, email, 256);
+
+
 	return email_addr;
 }
 
@@ -98,25 +100,29 @@ int write_message(struct email_headers_t *headers, char *content) {
 	g_mime_message_set_date(message_out, timenow, ((sendtime->tm_gmtoff / 3600) * 100) + ((sendtime->tm_gmtoff % 3600) * 60 / 3600));
 
 /* ID */
-//	sprintf(temp, "%lX.%lX.%s", timenow, (long int) clock(), getenv("JUDGE_ADDR"));
-//	g_mime_message_set_message_id(message_out, temp);
+	sprintf(temp1, "%lX.%lX.%s", timenow, (long int) clock(), getenv("JUDGE_ADDR"));
+	g_mime_message_set_message_id(message_out, temp1);
 
 /* References */
-	wcstombs(temp1, headers->msgid, MSGLEN);
-	wcstombs(temp2, headers->references, MSGLEN);
-	if (strlen(temp1)) {
-		if (strlen(temp2))
-			sprintf(temp2, "<%s> %s", temp1, temp2);
+
+	if (wcslen(headers->msgid)) {
+		wcstombs(temp1, headers->msgid, MSGLEN);
+		if (wcslen(headers->references)) {
+			wcstombs(temp2, headers->references, MSGLEN);
+			strcat(temp2, " <");
+			strcat(temp2, temp1);
+			strcat(temp2, ">");
+		}
 		else
 			sprintf(temp2, "<%s>", temp1);
 		g_mime_object_append_header((GMimeObject *)message_out, "References", temp2);
 	}
 
 /* In-Reply-To */
-	wcstombs(temp1, headers->msgid, MSGLEN);
-	if (strlen(temp1)) {
-		sprintf(temp1, "<%s>", temp1);
-		g_mime_object_append_header((GMimeObject *)message_out, "In-Reply-To", temp1);
+	if (wcslen(headers->msgid)) {
+		wcstombs(temp1, headers->msgid, MSGLEN);
+		sprintf(temp2, "<%s>", temp1);
+		g_mime_object_append_header((GMimeObject *)message_out, "In-Reply-To", temp2);
 	}
 
 	add_mime_part(message_out, content);
@@ -321,25 +327,21 @@ g_mime_message_foreach() again here. */
 			if (g_mime_content_type_is_type(g_mime_object_get_content_type(part), "text", "plain")) {
 				if (message_body == NULL) {
 					message_body = capture_message(part);
-					message_wide = calloc(strlen(message_body) + 1, sizeof(wchar_t));
-					mbstowcs(message_wide, message_body, strlen(message_body) + 1);
+					input_wide = calloc(strlen(message_body) + 1, sizeof(wchar_t));
+					mbstowcs(input_wide, message_body, strlen(message_body) + 1);
 				}
-				else
-					wprintf(L"Error: we have allready a Text-Part!\n");
 			}
 
 			if (g_mime_content_type_is_type(g_mime_object_get_content_type(part), "text", "html")) {
 				if (message_body == NULL) {
 					message_body = capture_message(part);
 					message_temp = calloc(strlen(message_body) + 1, sizeof(wchar_t));
-					message_wide = calloc(strlen(message_body) + 1, sizeof(wchar_t));
+					input_wide = calloc(strlen(message_body) + 1, sizeof(wchar_t));
 					mbstowcs(message_temp, message_body, strlen(message_body) + 1);
-					html_to_plain(message_wide, message_temp);
+					html_to_plain(input_wide, message_temp);
 					free(message_temp);
 					message_temp = NULL;
 				}
-				else
-					wprintf(L"Error: we have allready a HTML-part!\n");
 			}
 
 		}
@@ -376,21 +378,26 @@ int read_message(struct email_headers_t *headers, char *input_buffer) {
 	g_mime_message_foreach(message, count_foreach_callback, &count);
 
 	/* From */
-	email_addr_from = get_email_addr_from(message);
-	wcsncpy(headers->name , email_addr_from->name , MSGLEN);
-	wcsncpy(headers->email, email_addr_from->email, MSGLEN);
+	if ((email_addr_from = get_email_addr_from(message))) {
+		wcsncpy(headers->name , email_addr_from->name , MSGLEN);
+		wcsncpy(headers->email, email_addr_from->email, MSGLEN);
+	}
 
 /* Subject */
-	mbstowcs(headers->subject, g_mime_message_get_subject(message), MSGLEN);
+	if (g_mime_message_get_subject(message))
+		mbstowcs(headers->subject, g_mime_message_get_subject(message), MSGLEN);
 
 /* Message-ID */
-	mbstowcs(headers->msgid, g_mime_message_get_message_id(message), MSGLEN);
+	if (g_mime_message_get_message_id(message))
+		mbstowcs(headers->msgid, g_mime_message_get_message_id(message), MSGLEN);
 
 /* References */
-	mbstowcs(headers->references, g_mime_object_get_header((GMimeObject *)message,"references"), MSGLEN);
+	if (g_mime_object_get_header((GMimeObject *)message,"references"))
+		mbstowcs(headers->references, g_mime_object_get_header((GMimeObject *)message,"references"), MSGLEN);
 
 /* special headers */
-	mbstowcs(headers->gateway, g_mime_object_get_header((GMimeObject *)message,"x-judgecode"), MSGLEN);
+	if (g_mime_object_get_header((GMimeObject *)message,"x-judgecode"))
+		mbstowcs(headers->gateway, g_mime_object_get_header((GMimeObject *)message,"x-judgecode"), MSGLEN);
 
 	return 0;
 }
@@ -575,9 +582,20 @@ int html_to_plain(wchar_t *plain, wchar_t *html) {
 
 
 
-wchar_t *append_to_message(wchar_t *buffer, wchar_t *line) {
-	wchar_t *newbuffer;
-	newbuffer = realloc(buffer, sizeof(buffer) + wcslen(line));
+wchar_t *append_to_message(wchar_t *buffer, wchar_t *line, int *blocks) {
+	wchar_t *newbuffer = NULL;
+
+	if (buffer == NULL) {
+		newbuffer = malloc(sizeof(wchar_t) * BUFFER_SIZE);
+		(*blocks)++;
+		newbuffer[0] = 0L;
+	}
+	else if((wcslen(buffer) + wcslen(line)) > (BUFFER_SIZE * (*blocks))) {
+		(*blocks)++;
+		newbuffer = realloc(buffer, *blocks * sizeof(wchar_t) * BUFFER_SIZE);
+	}
+	else newbuffer = buffer;
+
 	wcscat(newbuffer, line);
 	return newbuffer;
 }
