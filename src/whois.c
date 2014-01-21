@@ -3,7 +3,7 @@
  *
  *  Mon Jänner 13 07:47:38 2014
  *  Copyright  2014  
- *  <user@host>
+ *  <reiszner@novaplan.at>
  ****************************************************************************/
 
 #include "string_wcs.h"
@@ -21,8 +21,9 @@ struct whois_t *get_whois_by_email(wchar_t *email) {
 	sprintf(temp, "%s/dip.whois", getenv("JUDGE_DIR"));
 	if((whois_fp = fopen(temp, "r")) == NULL) return NULL;
 
-	while (whois && !(wcsstr(whois->email, email)))
+	while (whois && !wcsstr(whois->email, email)) {
 		whois = read_whois(whois_fp);
+	}
 
 	fclose(whois_fp);
 	return whois;
@@ -88,35 +89,36 @@ struct whois_t *read_whois(FILE *fp) {
 	memset(whois, 0, sizeof(struct whois_t));
 
 	while (fgetws(line, 1024, fp)) {
+		if(line[wcslen(line) - 1] == '\n') line[wcslen(line) - 1] = '\0';
 		wcsncpy(linelc, line, 1024);
 		wcs_lc(linelc);
 
 		if (wcsncmp(linelc, L"-", 1) == 0) break;
 
-		else if (wcsncmp(linelc, L"user: ", 6) == 0)
-			swscanf(line+6, L"%d", &whois->uid);
+		else if (wcsncmp(linelc, L"user:", 5) == 0)
+			swscanf(line+5, L"%d", &whois->uid);
 
-		else if (wcsncmp(linelc, L"remind: ", 8) == 0)
-			swscanf(line+8, L"%d", &whois->remind);
+		else if (wcsncmp(linelc, L"remind:", 7) == 0)
+			swscanf(line+7, L"%d", &whois->remind);
 
-		else if (wcsncmp(linelc, L"package: ", 9) == 0)
-			swscanf(line+9, L"%d", &whois->package);
+		else if (wcsncmp(linelc, L"package:", 8) == 0)
+			swscanf(line+8, L"%d", &whois->package);
 
-		else if (wcsncmp(linelc, L"postalcode: ", 12) == 0)
-			swscanf(line+12, L"%d", &whois->postalcode);
+		else if (wcsncmp(linelc, L"postalcode:", 11) == 0)
+			swscanf(line+11, L"%d", &whois->postalcode);
 
-		else if (wcsncmp(linelc, L"country: ", 9) == 0) {
-			wcs_trim(linelc, &(line[9]));
-			wcsncpy(whois->country, linelc, wcslen(linelc));
+		else if (wcsncmp(linelc, L"country:", 8) == 0) {
+			wcs_trim2(&(line[8]));
+			wcsncpy(whois->country, &line[8], wcslen(&line[8]));
 		}
 
-		else if (wcsncmp(linelc, L"name: ", 6) == 0) {
+		else if (wcsncmp(linelc, L"name:", 5) == 0) {
+			wcs_trim2(&(line[5]));
+			wcsncpy(whois->name, &line[5], wcslen(&line[5]));
+		}
+
+		else if (wcsncmp(linelc, L"email:", 6) == 0) {
 			wcs_trim(linelc, &(line[6]));
-			wcsncpy(whois->name, linelc, wcslen(linelc));
-		}
-
-		else if (wcsncmp(linelc, L"email: ", 7) == 0) {
-			wcs_trim(linelc, &(line[7]));
 			wcsncpy(whois->email, linelc, wcslen(linelc));
 		}
 
@@ -175,17 +177,16 @@ struct whois_t *read_whois(FILE *fp) {
 			wcsncpy(whois->interests, linelc, wcslen(linelc));
 		}
 
-		else if (wcsncmp(linelc, L"sex: ", 5) == 0) {
-			wcs_trim(linelc, &(line[5]));
-			wcsncpy(whois->country, linelc, wcslen(linelc));
-		}
-			swscanf(line+5, L"%d", &whois->sex);
+		else if (wcsncmp(linelc, L"sex: ", 5) == 0)
+			swscanf(&line[5], L"%d", &whois->sex);
 
 	}
-	if (whois->uid)
+	if (whois->uid) {
 		return whois;
-	else
+	}
+	else {
 		return NULL;
+	}
 }
 
 

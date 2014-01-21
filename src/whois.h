@@ -3,7 +3,7 @@
  *
  *  Mon Jänner 13 07:47:38 2014
  *  Copyright  2014  
- *  <user@host>
+ *  <reiszner@novaplan.at>
  ****************************************************************************/
 
 #include <stdio.h>
@@ -17,7 +17,7 @@ struct whois_t {
 	int remind;
 	int package;
 	int postalcode;
-	wchar_t country[4];
+	wchar_t country[256];
 	wchar_t name[256];
 	wchar_t email[256];
 	wchar_t level[256];

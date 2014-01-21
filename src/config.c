@@ -56,23 +56,23 @@ struct Config *read_config(struct Config *config_old, struct Config *params)
 		buffer[i] = '\0';
 		for (i=(strlen(buffer)-1) ; buffer[i] == ' ' ; i--) buffer[i] = '\0';
 
-		if (strncmp("judgeuser",   variable,  9) == 0) sprintf(config.judgeuser, "%s", buffer);
-		if (strncmp("judgegroup",  variable, 10) == 0) sprintf(config.judgegroup, "%s", buffer);
-		if (strncmp("judgedir",    variable,  8) == 0) sprintf(config.judgedir, "%s", buffer);
-		if (strncmp("judgecode",   variable,  9) == 0) sprintf(config.judgecode, "%s", buffer);
-		if (strncmp("judgename",   variable,  9) == 0) sprintf(config.judgename, "%s", buffer);
-		if (strncmp("judgeaddr",   variable,  9) == 0) sprintf(config.judgeaddr, "%s", buffer);
-		if (strncmp("judgekeeper", variable, 11) == 0) sprintf(config.judgekeeper, "%s", buffer);
-		if (strncmp("gateway",     variable,  7) == 0) sprintf(config.gateway, "%s", buffer);
-		if (strncmp("sendmail",     variable, 8) == 0) sprintf(config.sendmail, "%s", buffer);
-		if (strncmp("pid-file",    variable,  8) == 0) sprintf(config.pidfile, "%s", buffer);
-		if (strncmp("unix-socket", variable, 11) == 0) sprintf(config.unixsocket, "%s", buffer);
-		if (strncmp("inet-socket", variable, 11) == 0) sprintf(config.inetsocket, "%s", buffer);
-		if (strncmp("inet-port",   variable,  9) == 0) sscanf(buffer, "%d", &config.inetport);
-		if (strncmp("fifo-file",   variable,  9) == 0) sprintf(config.fifofile, "%s", buffer);
-		if (strncmp("fifo-childs", variable, 11) == 0) sscanf(buffer, "%d", &config.fifochilds);
-		if (strncmp("log-input",   variable,  9) == 0) sscanf(buffer, "%d", &config.loginput);
-		if (strncmp("log-output",  variable, 10) == 0) sscanf(buffer, "%d", &config.logoutput);
+		if      (strncmp(variable, "judgeuser",    9) == 0) sprintf(config.judgeuser, "%s", buffer);
+		else if (strncmp(variable, "judgegroup",  10) == 0) sprintf(config.judgegroup, "%s", buffer);
+		else if (strncmp(variable, "judgedir",     8) == 0) sprintf(config.judgedir, "%s", buffer);
+		else if (strncmp(variable, "judgecode",    9) == 0) sprintf(config.judgecode, "%s", buffer);
+		else if (strncmp(variable, "judgename",    9) == 0) sprintf(config.judgename, "%s", buffer);
+		else if (strncmp(variable, "judgeaddr",    9) == 0) sprintf(config.judgeaddr, "%s", buffer);
+		else if (strncmp(variable, "judgekeeper", 11) == 0) sprintf(config.judgekeeper, "%s", buffer);
+		else if (strncmp(variable, "gateway",      7) == 0) sprintf(config.gateway, "%s", buffer);
+		else if (strncmp(variable, "sendmail",     8) == 0) sprintf(config.sendmail, "%s", buffer);
+		else if (strncmp(variable, "pid-file",     8) == 0) sprintf(config.pidfile, "%s", buffer);
+		else if (strncmp(variable, "unix-socket", 11) == 0) sprintf(config.unixsocket, "%s", buffer);
+		else if (strncmp(variable, "inet-socket", 11) == 0) sprintf(config.inetsocket, "%s", buffer);
+		else if (strncmp(variable, "inet-port",    9) == 0) sscanf(buffer, "%d", &config.inetport);
+		else if (strncmp(variable, "fifo-file",    9) == 0) sprintf(config.fifofile, "%s", buffer);
+		else if (strncmp(variable, "fifo-childs", 11) == 0) sscanf(buffer, "%d", &config.fifochilds);
+		else if (strncmp(variable, "log-input",    9) == 0) sscanf(buffer, "%d", &config.loginput);
+		else if (strncmp(variable, "log-output",  10) == 0) sscanf(buffer, "%d", &config.logoutput);
 	}
 	fclose(fp);
 
@@ -456,11 +456,6 @@ struct Config *read_config(struct Config *config_old, struct Config *params)
 		return NULL;
 	}
 
-	sprintf( string_out, "%s: restart at fifo = %d\n", config.judgecode, config.restart);
-	output(LOG_NOTICE, string_out);
-
-
-
 
 
 	ptr = getenv("JUDGE_FIFOCHILDS");
@@ -475,6 +470,7 @@ struct Config *read_config(struct Config *config_old, struct Config *params)
 		}
 		config.restart |= PIPE;
 	}
+
 
 
 	ptr = getenv("JUDGE_FIFO");
@@ -500,8 +496,7 @@ struct Config *read_config(struct Config *config_old, struct Config *params)
 		}
 	}
 
-	sprintf( string_out, "%s: restart at unix = %d\n", config.judgecode, config.restart);
-	output(LOG_NOTICE, string_out);
+
 
 	ptr = getenv("JUDGE_UNIX");
 	if (ptr == NULL && strlen(config.unixsocket) > 0) {
@@ -526,8 +521,7 @@ struct Config *read_config(struct Config *config_old, struct Config *params)
 		}
 	}
 
-	sprintf( string_out, "%s: restart at inet (token) = %d\n", config.judgecode, config.restart);
-	output(LOG_NOTICE, string_out);
+
 
 	i=0;
 	strcpy(buffer, config.inetsocket);
@@ -539,8 +533,7 @@ struct Config *read_config(struct Config *config_old, struct Config *params)
 	}
 	for (; i < 5 ; i++) variable[i*128] = '\0';
 
-	sprintf( string_out, "%s: restart at inet (old) = %d\n", config.judgecode, config.restart);
-	output(LOG_NOTICE, string_out);
+
 
 	for (i = 0 ; i < 5 ; i++) {
 		sprintf(buffer, "JUDGE_INET%d", i);
@@ -554,8 +547,7 @@ struct Config *read_config(struct Config *config_old, struct Config *params)
 		}
 	}
 
-	sprintf( string_out, "%s: restart at inet (new) = %d\n", config.judgecode, config.restart);
-	output(LOG_NOTICE, string_out);
+
 
 	for (i = 0 ; i < 5 ; i++) {
 		if (strlen(&variable[i*128]) > 0) {
@@ -576,8 +568,7 @@ struct Config *read_config(struct Config *config_old, struct Config *params)
 		}
 	}
 
-	sprintf( string_out, "%s: restart at port = %d\n", config.judgecode, config.restart);
-	output(LOG_NOTICE, string_out);
+
 
 	ptr = getenv("JUDGE_INETPORT");
 	if (ptr != NULL) sscanf(ptr,"%d",&j);
@@ -595,11 +586,9 @@ struct Config *read_config(struct Config *config_old, struct Config *params)
 		}
 	}
 
-	sprintf( string_out, "%s: restart at end1 = %d\n", config.judgecode, config.restart);
-	output(LOG_NOTICE, string_out);
+
+
 	config.restart &= 127;
-	sprintf( string_out, "%s: restart at end2 = %d\n", config.judgecode, config.restart);
-	output(LOG_NOTICE, string_out);
 	sprintf(config.file, "%s", config_old->file);
 	memcpy(config_old, &config, sizeof(struct Config));
 	return config_old;

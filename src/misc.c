@@ -19,14 +19,16 @@ sigfunk *signal (int sig_nr, sigfunk signalhandler) {
 	return alt_sig.sa_handler;
 }
 
-void strtolower (char *text)
-{
+
+
+void strtolower (char *text) {
 	int i = 0;
 	for (i = 0 ; text[i] != '\0' ; i++) text[i] = tolower(text[i]);
 }
 
-int chowngrp(int uid, int gid)
-{
+
+
+int chowngrp(int uid, int gid) {
 	if (getgid() != gid) {
 		if ((setgid(gid)) != 0) {
 			return -2;

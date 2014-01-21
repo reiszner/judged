@@ -3,7 +3,7 @@
  *
  *  Mon Jänner 13 12:41:53 2014
  *  Copyright  2014  
- *  <user@host>
+ *  <reiszner@novaplan.at>
  ****************************************************************************/
 
 #include "string_wcs.h"
@@ -58,13 +58,12 @@ struct email_addr_t *get_email_addr_from(GMimeMessage *message) {
 	email[cnt_a] = '\0';
 
 	if (cnt_a == 0) {
-		strncpy(email, name, strlen(name));
+		strncpy(email, name, strlen(name) + 1);
 		name[0] = '\0';
 	}
 
 	mbstowcs( email_addr->name, name, 256);
 	mbstowcs( email_addr->email, email, 256);
-
 
 	return email_addr;
 }
@@ -72,13 +71,15 @@ struct email_addr_t *get_email_addr_from(GMimeMessage *message) {
 
 
 
-int write_message(struct email_headers_t *headers, char *content) {
+int write_message(struct email_headers_t *headers, char *content, struct timeval idtime) {
 
 	char temp1[MSGLEN] = "\0", temp2[MSGLEN] = "\0";
 	GMimeMessage *message_out;
 	time_t timenow;
 	struct tm *sendtime;
+	struct timeval idtimenow;
 
+	gettimeofday(&idtimenow, NULL);
 	message_out = g_mime_message_new(FALSE);
 
 /* From */
@@ -100,7 +101,7 @@ int write_message(struct email_headers_t *headers, char *content) {
 	g_mime_message_set_date(message_out, timenow, ((sendtime->tm_gmtoff / 3600) * 100) + ((sendtime->tm_gmtoff % 3600) * 60 / 3600));
 
 /* ID */
-	sprintf(temp1, "%lX.%lX.%s", timenow, (long int) clock(), getenv("JUDGE_ADDR"));
+	sprintf(temp1, "%08lX.%05lX.%s", timenow, (long int) (idtimenow.tv_usec-idtime.tv_usec), getenv("JUDGE_ADDR"));
 	g_mime_message_set_message_id(message_out, temp1);
 
 /* References */
@@ -582,20 +583,72 @@ int html_to_plain(wchar_t *plain, wchar_t *html) {
 
 
 
-wchar_t *append_to_message(wchar_t *buffer, wchar_t *line, int *blocks) {
+int append_to_message(struct buffer_t *message, wchar_t *line) {
 	wchar_t *newbuffer = NULL;
 
-	if (buffer == NULL) {
-		newbuffer = malloc(sizeof(wchar_t) * BUFFER_SIZE);
-		(*blocks)++;
-		newbuffer[0] = 0L;
+	if (message->buffer == NULL) {
+		message->buffer = malloc(sizeof(wchar_t) * BUFFER_SIZE * ++message->blocks);
 	}
-	else if((wcslen(buffer) + wcslen(line)) > (BUFFER_SIZE * (*blocks))) {
-		(*blocks)++;
-		newbuffer = realloc(buffer, *blocks * sizeof(wchar_t) * BUFFER_SIZE);
+	else if((wcslen(message->buffer) + wcslen(line)) > (BUFFER_SIZE * message->blocks)) {
+		newbuffer = realloc(message->buffer, sizeof(wchar_t) * BUFFER_SIZE * ++message->blocks);
+		if (newbuffer) message->buffer = newbuffer;
+		return -1;
 	}
-	else newbuffer = buffer;
-
-	wcscat(newbuffer, line);
-	return newbuffer;
+	wcscat(message->buffer, line);
+	return 0;
 }
+
+void read_body(struct message_proc_t *body, wchar_t *lineend) {
+	wchar_t ch;
+	*body->line = 0L;
+	*body->linelc = 0L;
+
+	if (body->next) {
+		if (body->now)
+			body->now = body->next + 1;
+		else
+			body->now = body->next;
+	} else {
+		body->now = NULL;
+		return;
+	}
+
+	body->next = wcspbrk(body->now, lineend);
+	if (body->next) {
+		ch = *body->next;
+		*body->next = 0L;
+	}
+
+	wcs_trim(body->line, body->now);
+	wcscpy(body->linelc, body->line);
+	wcs_lc(body->linelc);
+
+	if (body->next)
+		*body->next = ch;
+
+	return;
+}
+
+
+
+int take_option(struct message_proc_t *check, wchar_t options[][MSGLEN], int max) {
+	wchar_t *token, *state, temp[MSGLEN];
+	int i;
+	printf("pruefe: '%ls'\n", check->line);
+	for (i = 0 ; i < max ; i++) {
+		wcsncpy(temp, options[i], MSGLEN);
+		token = wcstok(temp, L";", &state);
+		printf("Line: '%ls' --> pos: %d\n", check->linelc + check->pos, check->pos);
+		while(token != NULL) {
+			printf("Token: '%ls'\n", token);
+			if (wcsncmp(check->linelc + check->pos, token, wcslen(token)) == 0) {
+				check->pos += wcslen(token);
+				break;
+			}
+			token = wcstok(NULL, L";", &state);
+		}
+		if (token) break;
+	}
+	return i;
+}
+

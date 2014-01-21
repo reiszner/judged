@@ -148,13 +148,7 @@ int main(int argc, char **argv) {
 	signal (SIGQUIT, socket_quit);
 	signal (SIGCHLD, child_quit);
 	while (run) {
-/*
-		pid = waitpid (-1, NULL, WNOHANG);
-		if (pid < 0) syslog(LOG_NOTICE, "%s: error while waitpid. errorcode: %d\n", judgecode, pid);
-		else if (pid > 0) {
-			syslog(LOG_NOTICE, "%s: sock-child '%d' ended.\n", judgecode, pid);
-		}
-*/
+
 		fd_connect = accept_socket(&fd_socket);
 		if( fd_connect < 0 ) {
 			if( errno == EINTR )

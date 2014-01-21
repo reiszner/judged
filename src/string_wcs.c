@@ -3,7 +3,7 @@
  *
  *  Mon Jänner 13 07:56:34 2014
  *  Copyright  2014  
- *  <user@host>
+ *  <reiszner@novaplan.at>
  ****************************************************************************/
 
 #include "string_wcs.h"
@@ -24,7 +24,7 @@ int wcs_trim(wchar_t *dst, wchar_t *src) {
 	for (j = 0 ; !iswcntrl(src[i]) ; i++, j++) dst[j] = src[i];
 	dst[j] = 0L;
 	if (wcslen(dst) < 1) return -1;
-	for (j = wcslen(dst) - 1 ; iswspace(dst[j]) ; j--) dst[j] = 0L;
+//	for (j = wcslen(dst) - 1 ; iswspace(dst[j]) ; j--) dst[j] = 0L;
 	return 0;
 }
 
@@ -38,4 +38,26 @@ int wcs_trim2(wchar_t *text) {
 	if (wcslen(text) < 1) return -1;
 	for (j = wcslen(text) - 1 ; iswspace(text[j]) ; j--) text[j] = 0L;
 	return 0;
+}
+
+
+
+unsigned long wcs_to_mbs_len(char **mbs, wchar_t *wcs) {
+	unsigned long i, j;
+
+	for( i = j = 0 ; wcs[i] != 0L ; i++ ) {
+		if (wcs[i] > 0x007F ) {
+			if (wcs[i] > 0x07FF ) {
+				if (wcs[i] > 0xFFFF ) j+=3;
+				else j+=2;
+			}
+			else j++;
+		}
+		j++;
+	}
+	j++;
+
+	*mbs = malloc(sizeof(char) * j);
+	wcstombs(*mbs, wcs, j);
+	return j;
 }

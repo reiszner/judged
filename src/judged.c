@@ -360,7 +360,7 @@ int main(int argc, char **argv)
 	}
 
 // read the configfile
-	config_out(&config, &params);
+//	config_out(&config, &params);
 
 	for (i=0 ; i < 7 ; i++) pid_childs[i] = -1;
 	if (read_config(&config, &params) == NULL) {
@@ -369,7 +369,7 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
-	config_out(&config, &params);
+//	config_out(&config, &params);
 
 /*
  *
@@ -475,8 +475,6 @@ int main(int argc, char **argv)
 
 		for (i=0 ; i < 7 ; i++) {
 			if ( config.restart & (1<<i) ) {
-				sprintf(string_out, "%s: loop-start = %d / restart %d ...\n", config.judgecode, i, config.restart);
-				output(LOG_NOTICE, string_out);
 				if (pid_childs[i] > 0) {
 					if (i==0) {
 						sprintf(string_out, "%s: stoping fifo-child (%d) ...\n", config.judgecode, pid_childs[i]);
@@ -493,30 +491,9 @@ int main(int argc, char **argv)
 					kill (pid_childs[i], SIGTERM);
 				}
 				else {
-					sprintf(string_out, "%s: check %d from %d ...\n", config.judgecode, i, pid_childs[i]);
-					output(LOG_NOTICE, string_out);
 					pid_childs[i] = 0;
-/*
-					if (i == 0) {
-						if (strlen(config.fifofile) > 0) pid_childs[i] = 0;
-						else pid_childs[i] = -1;
-					}
-					else if (i == 1) {
-						if (strlen(config.unixsocket) > 0) pid_childs[i] = 0;
-						else pid_childs[i] = -1;
-					}
-					else {
-						sprintf(temp, "JUDGE_INET%d", i-2);
-						if (getenv(temp) != NULL) pid_childs[i] = 0;
-						else pid_childs[i] = -1;
-					}
-*/
-					sprintf(string_out, "%s: set %d to %d ...\n", config.judgecode, i, pid_childs[i]);
-					output(LOG_NOTICE, string_out);
 				}
 				config.restart &= (127 - (1<<i));
-				sprintf(string_out, "%s: loop-end = %d / restart %d ...\n", config.judgecode, i, config.restart);
-				output(LOG_NOTICE, string_out);
 			}
 		}
 
@@ -548,7 +525,6 @@ int main(int argc, char **argv)
 								pid_childs[i] = 0;
 							}
 							else {
-//								unsetenv("JUDGE_FIFO");
 								pid_childs[i] = -1;
 							}
 						}
@@ -564,7 +540,6 @@ int main(int argc, char **argv)
 								pid_childs[i] = 0;
 							}
 							else {
-//								unsetenv("JUDGE_UNIX");
 								pid_childs[i] = -1;
 							}
 						}
@@ -576,7 +551,6 @@ int main(int argc, char **argv)
 								pid_childs[i] = 0;
 							}
 							else {
-//								unsetenv(temp);
 								pid_childs[i] = -1;
 							}
 						}
