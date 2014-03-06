@@ -10,8 +10,17 @@
 
 wchar_t *wcs_lc(wchar_t *text) {
 	unsigned int i;
-	for ( i = 0 ; text[i] != '\0' ; i++ )
+	for ( i = 0 ; text[i] != L'\0' ; i++ )
 		if (iswupper(text[i])) text[i] = towlower(text[i]);
+	return text;
+}
+
+
+
+wchar_t *wcs_uc(wchar_t *text) {
+	unsigned int i;
+	for ( i = 0 ; text[i] != L'\0' ; i++ )
+		if (iswlower(text[i])) text[i] = towupper(text[i]);
 	return text;
 }
 
@@ -59,5 +68,28 @@ unsigned long wcs_to_mbs_len(char **mbs, wchar_t *wcs) {
 
 	*mbs = malloc(sizeof(char) * j);
 	wcstombs(*mbs, wcs, j);
+	return j;
+}
+
+
+
+int wcs_stripe(wchar_t *line) {
+	int i, j, flag;
+
+	for (i = 0, j = 0, flag = 0 ; line[i] != 0L ; i++) {
+		if (iswspace(line[i])) {
+			if (flag == 0) {
+				line[j] = line[i];
+				flag = 1;
+				j++;
+			}
+		}
+		else {
+			line[j] = line[i];
+			flag = 0;
+			j++;
+		}
+	}
+	line[j] = 0L;
 	return j;
 }

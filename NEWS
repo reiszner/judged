@@ -1,0 +1,30 @@
+What works:
+-----------
+  - run as daemon
+  - change user and group (run not as root)
+  - all settings are in a configfile
+  - reread configfile while it receive a SIGHUP
+  - fifo (named pipe) (configurable)
+  - unix domain socket (configurable)
+  - network socket (configurable)
+  - understand MIME-messages
+  - read messages in multibytestring
+  - take plaintext-part from message
+  - take html-part is there no plaintext
+  - work internaly with widecharacter
+  - send out MIME-messages
+  - read/write whois-database
+
+
+
+What don't work:
+----------------
+  - process message to find commands (in procress)
+  - interpret different date formats in commands (in procress)
+  - read/write master-database
+  - read/write dedication-database
+  - read/write game-files
+  - read map-files
+  - write logfiles
+  - check correctness of commands
+  - adjudicate the games (core function)

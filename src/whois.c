@@ -10,13 +10,13 @@
 #include "whois.h"
 
 
-struct whois_t *get_whois_by_email(wchar_t *email) {
+Whois *get_whois_by_email(wchar_t *email) {
 	struct whois_t *whois;
 	FILE *whois_fp;
 	char temp[1024];
 
-	whois = malloc(sizeof(struct whois_t));
-	memset(whois, 0, sizeof(struct whois_t));
+	whois = malloc(sizeof(Whois));
+	memset(whois, 0, sizeof(Whois));
 
 	sprintf(temp, "%s/dip.whois", getenv("JUDGE_DIR"));
 	if((whois_fp = fopen(temp, "r")) == NULL) return NULL;
@@ -31,13 +31,13 @@ struct whois_t *get_whois_by_email(wchar_t *email) {
 
 
 
-struct whois_t *get_whois_by_id(int uid) {
-	struct whois_t *whois;
+Whois *get_whois_by_id(int uid) {
+	Whois *whois;
 	FILE *whois_fp;
 	char temp[1024];
 
-	whois = malloc(sizeof(struct whois_t));
-	memset(whois, 0, sizeof(struct whois_t));
+	whois = malloc(sizeof(Whois));
+	memset(whois, 0, sizeof(Whois));
 
 	sprintf(temp, "%s/dip.whois", getenv("JUDGE_DIR"));
 	if((whois_fp = fopen(temp, "r")) == NULL) return NULL;
@@ -51,13 +51,13 @@ struct whois_t *get_whois_by_id(int uid) {
 
 
 
-int update_whois(struct whois_t *update) {
-	struct whois_t *whois;
+int update_whois(Whois *update) {
+	Whois *whois;
 	FILE *whois_fp, *whoisb_fp;
 	char temp[1024], temp2[1024];
 
-	whois = malloc(sizeof(struct whois_t));
-	memset(whois, 0, sizeof(struct whois_t));
+	whois = malloc(sizeof(Whois));
+	memset(whois, 0, sizeof(Whois));
 
 	sprintf(temp, "%s/dip.whois", getenv("JUDGE_DIR"));
 	sprintf(temp2, "%s/dip.whois.bak", getenv("JUDGE_DIR"));
@@ -81,12 +81,12 @@ int update_whois(struct whois_t *update) {
 
 
 
-struct whois_t *read_whois(FILE *fp) {
-	struct whois_t *whois;
+Whois *read_whois(FILE *fp) {
+	Whois *whois;
 	wchar_t line[1024], linelc[1024];
 
-	whois = malloc(sizeof(struct whois_t));
-	memset(whois, 0, sizeof(struct whois_t));
+	whois = malloc(sizeof(Whois));
+	memset(whois, 0, sizeof(Whois));
 
 	while (fgetws(line, 1024, fp)) {
 		if(line[wcslen(line) - 1] == '\n') line[wcslen(line) - 1] = '\0';
@@ -191,7 +191,7 @@ struct whois_t *read_whois(FILE *fp) {
 
 
 
-int write_whois(struct whois_t *whois, FILE *fp) {
+int write_whois(Whois *whois, FILE *fp) {
 	fwprintf(fp, L"User: %d\n", whois->uid);
 	fwprintf(fp, L"Remind: %d\n", whois->remind);
 	fwprintf(fp, L"Package: %d\n", whois->package);

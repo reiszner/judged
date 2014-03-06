@@ -12,11 +12,15 @@
 #include <wchar.h>
 #include <wctype.h>
 
-struct whois_t {
+#ifndef _WHOIS_
+
+typedef struct whois_t {
 	int uid;
 	int remind;
 	int package;
 	int postalcode;
+	int power_real;
+	int power_now;
 	wchar_t country[256];
 	wchar_t name[256];
 	wchar_t email[256];
@@ -33,12 +37,15 @@ struct whois_t {
 	wchar_t ip_address[256];
 	wchar_t interests[256];
 	int sex;
-};
+} Whois;
 
 
 
-struct whois_t *get_whois_by_uid(int);
-struct whois_t *get_whois_by_email(wchar_t *);
-int update_whois(struct whois_t *);
-struct whois_t *read_whois(FILE *);
-int write_whois(struct whois_t *, FILE *);
+Whois *get_whois_by_uid(int);
+Whois *get_whois_by_email(wchar_t *);
+int update_whois(Whois *);
+Whois *read_whois(FILE *);
+int write_whois(Whois *, FILE *);
+
+#define _WHOIS_
+#endif

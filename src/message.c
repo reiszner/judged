@@ -634,13 +634,13 @@ void read_body(struct message_proc_t *body, wchar_t *lineend) {
 int take_option(struct message_proc_t *check, wchar_t options[][MSGLEN], int max) {
 	wchar_t *token, *state, temp[MSGLEN];
 	int i;
-	printf("pruefe: '%ls'\n", check->line);
+//	printf("pruefe: '%ls'\n", check->line);
 	for (i = 0 ; i < max ; i++) {
 		wcsncpy(temp, options[i], MSGLEN);
 		token = wcstok(temp, L";", &state);
-		printf("Line: '%ls' --> pos: %d\n", check->linelc + check->pos, check->pos);
+//		printf("Line: '%ls' --> pos: %d\n", check->linelc + check->pos, check->pos);
 		while(token != NULL) {
-			printf("Token: '%ls'\n", token);
+//			printf("Token: '%ls'\n", token);
 			if (wcsncmp(check->linelc + check->pos, token, wcslen(token)) == 0) {
 				check->pos += wcslen(token);
 				break;
@@ -652,3 +652,8 @@ int take_option(struct message_proc_t *check, wchar_t options[][MSGLEN], int max
 	return i;
 }
 
+
+
+void append_option(wchar_t *options, wchar_t *opt) {
+	wcsncat(options, opt, MSGLEN - 1 - wcslen(options));
+}

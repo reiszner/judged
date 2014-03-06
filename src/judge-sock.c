@@ -130,8 +130,8 @@ int main(int argc, char **argv) {
 		if (res == -1) sprintf( string_out, "%s: can't change user. exit.\n", judgecode);
 		if (res == -2) sprintf( string_out, "%s: can't change group. exit.\n", judgecode);
 		if (res < 0) {
-			return EXIT_FAILURE;
 			output(LOG_ERR, string_out);
+			return EXIT_FAILURE;
 		}
 	}
 

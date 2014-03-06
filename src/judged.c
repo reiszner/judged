@@ -593,7 +593,40 @@ int main(int argc, char **argv)
 					}
 /* Childprocess for FIFO */
 					else {
+
+#include "fifo.h"
+
+						if (strlen(config.fifofile) > 0) {
+							umask (0111);
+							if (create_fifo(config.fifofile)) {
+								sprintf( string_out, "%s: couldn't create fifo '%s'.\n", config.judgecode, config.fifofile);
+								output(LOG_ERR, string_out);
+								return EXIT_FAILURE;
+							}
+						} else {
+							sprintf( string_out, "%s: no FIFO stated.\n", config.judgecode);
+							output(LOG_ERR, string_out);
+							return EXIT_FAILURE;
+						}
+
+						if (chown(config.fifofile, config.judgeuid, config.judgegid) != 0) {
+							sprintf( string_out, "%s: can't change user and/or group of fifo '%s'. exit.\n", config.judgecode, config.fifofile);
+							output(LOG_ERR, string_out);
+							return EXIT_FAILURE;
+						}
+
+						if ((res = chowngrp(config.judgeuid, config.judgegid)) != 0) {
+							if (res == -1) sprintf( string_out, "%s: can't change user. exit.\n", config.judgecode);
+							if (res == -2) sprintf( string_out, "%s: can't change group. exit.\n", config.judgecode);
+							if (res < 0) {
+								output(LOG_ERR, string_out);
+								return EXIT_FAILURE;
+							}
+						}
 						execlp("./judge-fifo", "judge-fifo", config.judgecode, config.fifofile, NULL);
+
+
+
 					}
 				}
 /* UNIX */
@@ -696,6 +729,14 @@ int main(int argc, char **argv)
 /* Childprocess */
 				else {
 					sscanf(msg.text + 7,"%d",&res);
+					if ((res = chowngrp(config.judgeuid, config.judgegid)) != 0) {
+						if (res == -1) sprintf( string_out, "%s: can't change user. exit.\n", config.judgecode);
+						if (res == -2) sprintf( string_out, "%s: can't change group. exit.\n", config.judgecode);
+						if (res < 0) {
+							output(LOG_ERR, string_out);
+							return EXIT_FAILURE;
+						}
+					}
 					incoming(res);
 					exit(0);
 				}

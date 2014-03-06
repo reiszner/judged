@@ -55,7 +55,7 @@ int incoming (int partner) {
 				msg.prio=partner;
 				sprintf(msg.text, "ERROR");
 				msgsnd(msgid, &msg, MSGLEN, 0);
-				return -1;
+				return EXIT_FAILURE;
 			}
 			msg.prio=partner;
 			sprintf(msg.text, "SHM_OK");
@@ -81,7 +81,7 @@ int incoming (int partner) {
 		}
 
 	}
-	if (!input_mbs) return -1;
+	if (!input_mbs) return EXIT_FAILURE;
 	output_mbs = NULL;
 
 // Auswerten !!!

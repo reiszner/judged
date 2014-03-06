@@ -1,0 +1,66 @@
+About this software:
+--------------------
+This program is an attempt of an automated adjudicator for
+the boardgame Diplomacy™.
+
+
+
+What is Diplomacy?
+------------------
+Diplomacy™ is a boardgame and was created around 1954 from Allan Brian Calhamer.
+Diplomacy™ is a trademark of Avalon Hill, a division of Hasbro, Inc.
+
+
+
+Isn't there a software for that?
+--------------------------------
+Yes, Ken Lowe has write a program in the late 1980s.
+The software was improved from several different programmers,
+but the program has many flaws:
+  - can only run one time at same time.
+  - can only read emails with ASCII-plaintext.
+  - it is slow, because the program must be loaded for every email.
+  - a bunch of work was done by scripts (or other software) around the program.
+  - can only work with emails, there are no local interfaces.
+    (in example: for a webserver)
+  - can only read and answer in english (detriment of ASCII-plaintext).
+
+The goal of judged is:
+  - can run more than one at same time
+  - work with MIME-emails
+  - work completely with UTF-8 encoding
+  - run as daemon
+  - need no other scripts/programs
+  - have fifo, unix-socket and inet-socket as interface
+  - support for other languages (with conf-files)
+
+The name 'judged' stay for 'judge' (shorthand for Adjudicator)
+and the ending 'd' stays for 'daemon' (like many programs on Unix/Linux).
+If you study the source code, you will find many comments from my tests.
+Many comments are in german, because i life in Austria (sorry for
+my horrible english at this point).
+
+
+
+How come the idea of a new program?
+-----------------------------------
+I found in spring 2012 a site (http://www.lepanto.de/) where i can play
+Diplomacy per email. I'm a fan of this boardgame and this judge (DEUS)
+was translated to german. So i'm starting to play Diplomacy per email.
+In june 2012, the judge was gone. After a couple of days, i become
+the message, that the judgekeeper (Dietmar Kulsch) is died.
+But i have contact with the webmaster (Martin Asal) and he has
+a shell-login on the server where DEUS and DEAC was hosted.
+He give me the account-data (it was a root-account) and i go to
+my server and copied all files per ssh (judge, gamedata, website, etc.).
+The webmaster an i worked the full july and in august the judges
+goes online under http://www.lepanto.at/.
+It was a hard work, i have never seen this software before.
+At this time, i saw the fragile workchain with many scripts and programs.
+Now, where the judges run stable, i work on a better program to
+eliminate the flaws from the old software.
+
+
+
+Sascha Reißner
+Judgekeeper of DEUS and DEAC

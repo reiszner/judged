@@ -34,12 +34,10 @@ int main(int argc, char **argv) {
 	struct message msg;
 
 	char judgecode[255], fifofile[255], string_out[1024];
-	int semid, judgeuid, judgegid, fifochilds = 0, childs = 0, judgedaemon, res, i;
+	int semid, fifochilds = 0, childs = 0, judgedaemon, res, i;
 	pid_t pid;
 	key_t msg_key, sem_key;
 
-	sscanf(getenv("JUDGE_UID"), "%d", &judgeuid);
-	sscanf(getenv("JUDGE_GID"), "%d", &judgegid);
 	strcpy(judgecode, getenv("JUDGE_CODE"));
 	strcpy(fifofile, getenv("JUDGE_FIFO"));
 	sscanf(getenv("JUDGE_FIFOCHILDS"), "%d", &fifochilds);
@@ -51,34 +49,6 @@ int main(int argc, char **argv) {
 
 	if (judgedaemon > 0) {
 		openlog( argv[0], LOG_PID | LOG_CONS | LOG_NDELAY, LOG_DAEMON );
-	}
-
-	if (strlen(fifofile) > 0) {
-		umask (0111);
-		if (create_fifo(fifofile)) {
-			sprintf( string_out, "%s: couldn't create fifo '%s'.\n", judgecode, fifofile);
-			output(LOG_ERR, string_out);
-			return EXIT_FAILURE;
-		}
-	} else {
-		sprintf( string_out, "%s: no FIFO stated.\n", judgecode);
-		output(LOG_ERR, string_out);
-		return EXIT_FAILURE;
-	}
-
-	if (chown(fifofile, judgeuid, judgegid) != 0) {
-		sprintf( string_out, "%s: can't change user and/or group of fifo '%s'. exit.\n", judgecode, fifofile);
-		output(LOG_ERR, string_out);
-		return EXIT_FAILURE;
-	}
-
-	if ((res = chowngrp(judgeuid, judgegid)) != 0) {
-		if (res == -1) sprintf( string_out, "%s: can't change user. exit.\n", judgecode);
-		if (res == -2) sprintf( string_out, "%s: can't change group. exit.\n", judgecode);
-		if (res < 0) {
-			output(LOG_ERR, string_out);
-			return EXIT_FAILURE;
-		}
 	}
 
 	sem_key = ftok(fifofile, 1);

@@ -1,7 +1,7 @@
 /***************************************************************************
- *            command_list.h
+ *            comand_press.h
  *
- *  Die Jänner 21 03:11:04 2014
+ *  Fre Jänner 24 07:47:23 2014
  *  Copyright  2014  
  *  <reiszner@novaplan.at>
  ****************************************************************************/
@@ -10,4 +10,4 @@
 #include "master.h"
 #include "whois.h"
 
-void com_list(struct message_proc_t *, wchar_t [][MSGLEN], Game *, Whois *, struct buffer_t *);
+void com_press(struct message_proc_t *, wchar_t [][MSGLEN], Game *, Whois *, struct buffer_t *);

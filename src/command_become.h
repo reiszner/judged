@@ -7,8 +7,7 @@
  ****************************************************************************/
 
 #include <wchar.h>
+#include "master.h"
+#include "whois.h"
 
-#define BECOME_MASTER 0
-#define ALL__BECOME 1
-
-void com_become(struct message_proc_t *, wchar_t *, struct buffer_t *);
+void com_become(struct message_proc_t *, wchar_t [][MSGLEN], Game *, Whois *, struct buffer_t *);

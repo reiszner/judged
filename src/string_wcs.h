@@ -11,6 +11,8 @@
 #include <stdlib.h>
 
 wchar_t *wcs_lc(wchar_t *);
+wchar_t *wcs_uc(wchar_t *);
 int wcs_trim(wchar_t *, wchar_t *);
 int wcs_trim2(wchar_t *);
 unsigned long wcs_to_mbs_len(char **, wchar_t *);
+int wcs_stripe(wchar_t *);

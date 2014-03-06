@@ -1,7 +1,7 @@
 /***************************************************************************
- *            command_list.h
+ *            command_register.h
  *
- *  Die Jänner 21 03:11:04 2014
+ *  Fre Jänner 24 08:19:10 2014
  *  Copyright  2014  
  *  <reiszner@novaplan.at>
  ****************************************************************************/
@@ -10,4 +10,4 @@
 #include "master.h"
 #include "whois.h"
 
-void com_list(struct message_proc_t *, wchar_t [][MSGLEN], Game *, Whois *, struct buffer_t *);
+void com_register(struct message_proc_t *, wchar_t [][MSGLEN], Game *, Whois *, struct buffer_t *);
