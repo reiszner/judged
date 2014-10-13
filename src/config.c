@@ -13,7 +13,7 @@ struct Config *read_config(struct Config *config_old, struct Config *params)
 {
 	FILE *fp;
 	int i, j;
-	char buffer[1024], variable[1024], string_out[1024], *ptr;
+	char buffer[1024], variable[1024], *ptr;
 	struct Config config;
 	struct passwd *user_ptr;
 	struct group *group_ptr;
@@ -106,8 +106,7 @@ struct Config *read_config(struct Config *config_old, struct Config *params)
 		sscanf(config.judgeuser ,"%d", &i);
 		user_ptr=getpwuid(i);
 		if(user_ptr == NULL) {
-			sprintf(string_out, "%s: user or UID '%s' not found. exit.\n", config.judgecode, config.judgeuser);
-			output( LOG_ERR, string_out);
+			logging(LOG_ERR, L"%s: user or UID '%s' not found. exit.\n", config.judgecode, config.judgeuser);
 			return NULL;
 		}
 	}
@@ -130,8 +129,7 @@ struct Config *read_config(struct Config *config_old, struct Config *params)
 	}
 
 	if(group_ptr == NULL) {
-		sprintf(string_out, "%s: group or GID '%s' not found. exit.\n", config.judgecode, config.judgegroup);
-		output( LOG_ERR, string_out);
+		logging(LOG_ERR, L"%s: group or GID '%s' not found. exit.\n", config.judgecode, config.judgegroup);
 		return NULL;
 	}
 	sscanf(group_ptr->gr_name, "%s", config.judgegroup);
@@ -151,15 +149,12 @@ struct Config *read_config(struct Config *config_old, struct Config *params)
 // check if we are runable
 
 	if (config.judgeuid == 0) {
-		
-		sprintf( string_out, "%s: will not run as user '%s' (UID: %d). exit.\n", config.judgecode, config.judgeuser, config.judgeuid);
-		output(LOG_ERR, string_out);
+		logging(LOG_ERR, L"%s: will not run as user '%s' (UID: %d). exit.\n", config.judgecode, config.judgeuser, config.judgeuid);
 		return NULL;
 	}
 
 	if (config.judgegid == 0) {
-		sprintf( string_out, "%s: will not run as group '%s' (GID: %d). exit.\n", config.judgecode, config.judgegroup, config.judgegid);
-		output ( LOG_ERR, string_out);
+		logging(LOG_ERR, L"%s: will not run as group '%s' (GID: %d). exit.\n", config.judgecode, config.judgegroup, config.judgegid);
 		return NULL;
 	}
 
@@ -169,8 +164,7 @@ struct Config *read_config(struct Config *config_old, struct Config *params)
 	if (config.inetport == 0) config.inetsocket[0] = '\0';
 
 	if (strlen(config.unixsocket) == 0 && strlen(config.inetsocket) == 0 && strlen(config.fifofile) == 0 ) {
-		sprintf( string_out, "%s: have no canal to communicate. exit.\n", config.judgecode);
-		output(LOG_ERR, string_out);
+		logging(LOG_ERR, L"%s: have no canal to communicate. exit.\n", config.judgecode);
 		return NULL;
 	}
 
@@ -180,25 +174,17 @@ struct Config *read_config(struct Config *config_old, struct Config *params)
 		ptr = getenv("JUDGE_UID");
 		if (ptr != NULL) sscanf(ptr, "%d", &i);
 		if (ptr == NULL || i != config.judgeuid) {
-			if (ptr == NULL) {
-				sprintf( string_out, "%s: set user to '%s' (%d)\n", config.judgecode, config.judgeuser, config.judgeuid);
-				output(LOG_NOTICE, string_out);
-			}
-			else {
-				sprintf( string_out, "%s: change user to '%s' (%d)\n", config.judgecode, config.judgeuser, config.judgeuid);
-				output(LOG_NOTICE, string_out);
-			}
-			sprintf(buffer,"%d",config.judgeuid);
+			if (ptr == NULL) logging(LOG_NOTICE, L"%s: set user to '%s' (%d)\n", config.judgecode, config.judgeuser, config.judgeuid);
+			else logging(LOG_NOTICE, L"%s: change user to '%s' (%d)\n", config.judgecode, config.judgeuser, config.judgeuid);
+			sprintf(buffer, "%d", config.judgeuid);
 			if( setenv("JUDGE_UID", buffer, 1) != 0 ) {
-				sprintf( string_out, "%s: couldn't set JUDGE_UID\n", config.judgecode);
-				output(LOG_ERR, string_out);
+				logging(LOG_ERR, L"%s: couldn't set JUDGE_UID\n", config.judgecode);
 				return NULL;
 			}
 			config.restart |= ALL; 
 		}
 	} else if (config.judgeuid < 0) {
-		sprintf( string_out, "%s: no user/UID found in configfile. exit.\n", config.judgecode);
-		output(LOG_ERR, string_out);
+		logging(LOG_ERR, L"%s: no user/UID found in configfile. exit.\n", config.judgecode);
 		return NULL;
 	}
 
@@ -208,25 +194,17 @@ struct Config *read_config(struct Config *config_old, struct Config *params)
 		ptr = getenv("JUDGE_GID");
 		if (ptr != NULL) sscanf(ptr, "%d", &i);
 		if (ptr == NULL || i != config.judgegid) {
-			if (ptr == NULL) {
-				sprintf( string_out, "%s: set group to '%s' (%d)\n", config.judgecode, config.judgegroup, config.judgegid);
-				output(LOG_NOTICE, string_out);
-			}
-			else {
-				sprintf( string_out, "%s: change group to '%s' (%d)\n", config.judgecode, config.judgegroup, config.judgegid);
-				output(LOG_NOTICE, string_out);
-			}
+			if (ptr == NULL) logging(LOG_NOTICE, L"%s: set group to '%s' (%d)\n", config.judgecode, config.judgegroup, config.judgegid);
+			else logging(LOG_NOTICE, L"%s: change group to '%s' (%d)\n", config.judgecode, config.judgegroup, config.judgegid);
 			sprintf(buffer,"%d",config.judgegid);
 			if( setenv("JUDGE_GID", buffer, 1) != 0 ) {
-				sprintf( string_out, "%s: couldn't set JUDGE_GID\n", config.judgecode);
-				output(LOG_ERR, string_out);
+				logging(LOG_ERR, L"%s: couldn't set JUDGE_GID\n", config.judgecode);
 				return NULL;
 			}
 			config.restart |= ALL;
 		}
 	} else if (config.judgegid < 0) {
-		sprintf( string_out, "%s: no group/GID found in configfile. exit.\n", config.judgecode);
-		output(LOG_ERR, string_out);
+		logging(LOG_ERR, L"%s: no group/GID found in configfile. exit.\n", config.judgecode);
 		return NULL;
 	}
 
@@ -236,29 +214,20 @@ struct Config *read_config(struct Config *config_old, struct Config *params)
 		ptr = getenv("JUDGE_DIR");
 		if (ptr != NULL) i = strcmp(ptr, config.judgedir);
 		if (ptr == NULL || i != 0) {
-			if (ptr == NULL) {
-				sprintf( string_out, "%s: set directory to '%s'\n", config.judgecode, config.judgedir);
-				output(LOG_NOTICE, string_out);
-			}
-			else {
-				sprintf( string_out, "%s: change directory to '%s'\n", config.judgecode, config.judgedir);
-				output(LOG_NOTICE, string_out);
-			}
+			if (ptr == NULL) logging(LOG_NOTICE, L"%s: set directory to '%s'\n", config.judgecode, config.judgedir);
+			else logging(LOG_NOTICE, L"%s: change directory to '%s'\n", config.judgecode, config.judgedir);
 			if( setenv("JUDGE_DIR", config.judgedir, 1) != 0 ) {
-				sprintf( string_out, "%s: couldn't set JUDGE_DIR\n", config.judgecode);
-				output(LOG_ERR, string_out);
+				logging(LOG_ERR, L"%s: couldn't set JUDGE_DIR\n", config.judgecode);
 				return NULL;
 			}
 			if(chdir(config.judgedir) == -1) {
-				sprintf( string_out, "%s: couldn't change to directory '%s'.\n", config.judgecode, config.judgedir);
-				output(LOG_ERR, string_out);
+				logging(LOG_ERR, L"%s: couldn't change to directory '%s'.\n", config.judgecode, config.judgedir);
 				return NULL;
 			}
 		}
 	}
 	else {
-		sprintf( string_out, "%s: no directory found in configfile. exit.\n", config.judgecode);
-		output(LOG_ERR, string_out);
+		logging(LOG_ERR, L"%s: no directory found in configfile. exit.\n", config.judgecode);
 		return NULL;
 	}
 
@@ -268,25 +237,17 @@ struct Config *read_config(struct Config *config_old, struct Config *params)
 		ptr = getenv("JUDGE_CODE");
 		if (ptr != NULL) i = strcmp(ptr, config.judgecode);
 		if (ptr == NULL || i != 0) {
-			if (ptr == NULL) {
-				sprintf( string_out, "%s: set judgecode to '%s'\n", config.judgecode, config.judgecode);
-				output(LOG_NOTICE, string_out);
-			}
-			else {
-				sprintf( string_out, "%s: change judgecode to '%s'\n", config.judgecode, config.judgecode);
-				output(LOG_NOTICE, string_out);
-			}
+			if (ptr == NULL) logging(LOG_NOTICE, L"%s: set judgecode to '%s'\n", config.judgecode, config.judgecode);
+			else logging(LOG_NOTICE, L"%s: change judgecode to '%s'\n", config.judgecode, config.judgecode);
 			if( setenv("JUDGE_CODE", config.judgecode, 1) != 0 ) {
-				sprintf( string_out, "%s: couldn't set JUDGE_CODE\n", config.judgecode);
-				output(LOG_ERR, string_out);
+				logging(LOG_ERR, L"%s: couldn't set JUDGE_CODE\n", config.judgecode);
 				return NULL;
 			}
 			config.restart |= ALL;
 		}
 	}
 	else {
-		sprintf( string_out, "%s: no judgecode found in configfile. exit.\n", config.judgecode);
-		output(LOG_ERR, string_out);
+		logging(LOG_ERR, L"%s: no judgecode found in configfile. exit.\n", config.judgecode);
 		return NULL;
 	}
 
@@ -296,24 +257,16 @@ struct Config *read_config(struct Config *config_old, struct Config *params)
 		ptr = getenv("JUDGE_NAME");
 		if (ptr != NULL) i = strcmp(ptr, config.judgename);
 		if (ptr == NULL || i != 0) {
-			if (ptr == NULL) {
-				sprintf( string_out, "%s: set judgename to '%s'\n", config.judgecode, config.judgename);
-				output(LOG_NOTICE, string_out);
-			}
-			else {
-				sprintf( string_out, "%s: change judgename to '%s'\n", config.judgecode, config.judgename);
-				output(LOG_NOTICE, string_out);
-			}
+			if (ptr == NULL) logging(LOG_NOTICE, L"%s: set judgename to '%s'\n", config.judgecode, config.judgename);
+			else logging(LOG_NOTICE, L"%s: change judgename to '%s'\n", config.judgecode, config.judgename);
 			if( setenv("JUDGE_NAME", config.judgename, 1) != 0 ) {
-				sprintf( string_out, "%s: couldn't set JUDGE_NAME\n", config.judgecode);
-				output(LOG_ERR, string_out);
+				logging(LOG_ERR, L"%s: couldn't set JUDGE_NAME\n", config.judgecode);
 				return NULL;
 			}
 		}
 	}
 	else {
-		sprintf( string_out, "%s: no judgename found in configfile. exit.\n", config.judgecode);
-		output(LOG_ERR, string_out);
+		logging(LOG_ERR, L"%s: no judgename found in configfile. exit.\n", config.judgecode);
 		return NULL;
 	}
 
@@ -323,24 +276,16 @@ struct Config *read_config(struct Config *config_old, struct Config *params)
 		ptr = getenv("JUDGE_ADDR");
 		if (ptr != NULL) i = strcmp(ptr, config.judgeaddr);
 		if (ptr == NULL || i != 0) {
-			if (ptr == NULL) {
-				sprintf( string_out, "%s: set judgeaddr to '%s'\n", config.judgecode, config.judgeaddr);
-				output(LOG_NOTICE, string_out);
-			}
-			else {
-				sprintf( string_out, "%s: change judgeaddr to '%s'\n", config.judgecode, config.judgeaddr);
-				output(LOG_NOTICE, string_out);
-			}
+			if (ptr == NULL) logging(LOG_NOTICE, L"%s: set judgeaddr to '%s'\n", config.judgecode, config.judgeaddr);
+			else logging(LOG_NOTICE, L"%s: change judgeaddr to '%s'\n", config.judgecode, config.judgeaddr);
 			if( setenv("JUDGE_ADDR", config.judgeaddr, 1) != 0 ) {
-				sprintf( string_out, "%s: couldn't set JUDGE_ADDR\n", config.judgecode);
-				output(LOG_ERR, string_out);
+				logging(LOG_ERR, L"%s: couldn't set JUDGE_ADDR\n", config.judgecode);
 				return NULL;
 			}
 		}
 	}
 	else {
-		sprintf( string_out, "%s: no judgeaddr found in configfile. exit.\n", config.judgecode);
-		output(LOG_ERR, string_out);
+		logging(LOG_ERR, L"%s: no judgeaddr found in configfile. exit.\n", config.judgecode);
 		return NULL;
 	}
 
@@ -350,24 +295,16 @@ struct Config *read_config(struct Config *config_old, struct Config *params)
 		ptr = getenv("JUDGE_KEEPER");
 		if (ptr != NULL) i = strcmp(ptr, config.judgekeeper);
 		if (ptr == NULL || i != 0) {
-			if (ptr == NULL) {
-				sprintf( string_out, "%s: set judgekeeper to '%s'\n", config.judgecode, config.judgekeeper);
-				output(LOG_NOTICE, string_out);
-			}
-			else {
-				sprintf( string_out, "%s: change judgekeeper to '%s'\n", config.judgecode, config.judgekeeper);
-				output(LOG_NOTICE, string_out);
-			}
+			if (ptr == NULL) logging(LOG_NOTICE, L"%s: set judgekeeper to '%s'\n", config.judgecode, config.judgekeeper);
+			else logging(LOG_NOTICE, L"%s: change judgekeeper to '%s'\n", config.judgecode, config.judgekeeper);
 			if( setenv("JUDGE_KEEPER", config.judgekeeper, 1) != 0 ) {
-				sprintf( string_out, "%s: couldn't set JUDGE_KEEPER\n", config.judgecode);
-				output(LOG_ERR, string_out);
+				logging(LOG_ERR, L"%s: couldn't set JUDGE_KEEPER\n", config.judgecode);
 				return NULL;
 			}
 		}
 	}
 	else {
-		sprintf( string_out, "%s: no address for judgekeeper found in configfile. exit.\n", config.judgecode);
-		output(LOG_ERR, string_out);
+		logging(LOG_ERR, L"%s: no address for judgekeeper found in configfile. exit.\n", config.judgecode);
 		return NULL;
 	}
 
@@ -377,24 +314,16 @@ struct Config *read_config(struct Config *config_old, struct Config *params)
 		ptr = getenv("JUDGE_GATEWAY");
 		if (ptr != NULL) i = strcmp(ptr, config.gateway);
 		if (ptr == NULL || i != 0) {
-			if (ptr == NULL) {
-				sprintf( string_out, "%s: set gateway to '%s'\n", config.judgecode, config.gateway);
-				output(LOG_NOTICE, string_out);
-			}
-			else {
-				sprintf( string_out, "%s: change gateway to '%s'\n", config.judgecode, config.gateway);
-				output(LOG_NOTICE, string_out);
-			}
+			if (ptr == NULL) logging(LOG_NOTICE, L"%s: set gateway to '%s'\n", config.judgecode, config.gateway);
+			else logging(LOG_NOTICE, L"%s: change gateway to '%s'\n", config.judgecode, config.gateway);
 			if (setenv("JUDGE_GATEWAY", config.gateway, 1) != 0 ) {
-				sprintf( string_out, "%s: couldn't set JUDGE_GATEWAY\n", config.judgecode);
-				output(LOG_ERR, string_out);
+				logging(LOG_ERR, L"%s: couldn't set JUDGE_GATEWAY\n", config.judgecode);
 				return NULL;
 			}
 		}
 	}
 	else {
-		sprintf( string_out, "%s: no address for gateway found in configfile. exit.\n", config.judgecode);
-		output(LOG_ERR, string_out);
+		logging(LOG_ERR, L"%s: no address for gateway found in configfile. exit.\n", config.judgecode);
 		return NULL;
 	}
 
@@ -404,24 +333,16 @@ struct Config *read_config(struct Config *config_old, struct Config *params)
 		ptr = getenv("JUDGE_SENDMAIL");
 		if (ptr != NULL) i = strcmp(ptr, config.sendmail);
 		if (ptr == NULL || i != 0) {
-			if (ptr == NULL) {
-				sprintf( string_out, "%s: set sendmail to '%s'\n", config.judgecode, config.sendmail);
-				output(LOG_NOTICE, string_out);
-			}
-			else {
-				sprintf( string_out, "%s: change sendmail to '%s'\n", config.judgecode, config.sendmail);
-				output(LOG_NOTICE, string_out);
-			}
+			if (ptr == NULL) logging(LOG_NOTICE, L"%s: set sendmail to '%s'\n", config.judgecode, config.sendmail);
+			else logging(LOG_NOTICE, L"%s: change sendmail to '%s'\n", config.judgecode, config.sendmail);
 			if (setenv("JUDGE_SENDMAIL", config.sendmail, 1) != 0 ) {
-				sprintf( string_out, "%s: couldn't set JUDGE_SENDMAIL\n", config.judgecode);
-				output(LOG_ERR, string_out);
+				logging(LOG_ERR, L"%s: couldn't set JUDGE_SENDMAIL\n", config.judgecode);
 				return NULL;
 			}
 		}
 	}
 	else {
-		sprintf( string_out, "%s: no command for sendmail found in configfile. exit.\n", config.judgecode);
-		output(LOG_ERR, string_out);
+		logging(LOG_ERR, L"%s: no command for sendmail found in configfile. exit.\n", config.judgecode);
 		return NULL;
 	}
 
@@ -429,30 +350,25 @@ struct Config *read_config(struct Config *config_old, struct Config *params)
 
 	ptr = getenv("JUDGE_PIDFILE");
 	if (ptr == NULL && strlen(config.pidfile) > 0) {
-		sprintf( string_out, "%s: set pidfile to '%s'\n", config.judgecode, config.pidfile);
-		output(LOG_NOTICE, string_out);
+		logging(LOG_NOTICE, L"%s: set pidfile to '%s'\n", config.judgecode, config.pidfile);
 		if (setenv("JUDGE_PIDFILE", config.pidfile, 1) != 0 ) {
-			sprintf( string_out, "%s: couldn't set JUDGE_PIDFILE\n", config.judgecode);
-			output(LOG_ERR, string_out);
+			logging(LOG_ERR, L"%s: couldn't set JUDGE_PIDFILE\n", config.judgecode);
 			return NULL;
 		}
 	}
 	else if (ptr != NULL && strlen(config.pidfile) == 0) {
 		sscanf(ptr,"%s",config.pidfile);
-		sprintf( string_out, "%s: can't run without pidfile! leaf it at '%s'\n", config.judgecode, config.pidfile);
-		output(LOG_NOTICE, string_out);
+		logging(LOG_NOTICE, L"%s: can't run without pidfile! leaf it at '%s'\n", config.judgecode, config.pidfile);
 	}
 	else if (ptr != NULL && strlen(config.pidfile) > 0) {
 		i = strcmp(ptr, config.pidfile);
 		if (i != 0) {
 			sscanf(ptr,"%s",config.pidfile);
-			sprintf( string_out, "%s: pidfile can't changed! leaf it at '%s'\n", config.judgecode, config.pidfile);
-			output(LOG_NOTICE, string_out);
+			logging(LOG_NOTICE, L"%s: pidfile can't changed! leaf it at '%s'\n", config.judgecode, config.pidfile);
 		}
 	}
 	else {
-		sprintf( string_out, "%s: no pidfile defined in configfile. exit.\n", config.judgecode);
-		output(LOG_ERR, string_out);
+		logging(LOG_ERR, L"%s: no pidfile defined in configfile. exit.\n", config.judgecode);
 		return NULL;
 	}
 
@@ -464,8 +380,7 @@ struct Config *read_config(struct Config *config_old, struct Config *params)
 	if (config.fifochilds != j) {
 		sprintf(buffer,"%d",config.fifochilds);
 		if( setenv("JUDGE_FIFOCHILDS", buffer, 1) != 0 ) {
-			sprintf( string_out, "%s: couldn't set JUDGE_FIFOCHILDS\n", config.judgecode);
-			output(LOG_ERR, string_out);
+			logging(LOG_ERR, L"%s: couldn't set JUDGE_FIFOCHILDS\n", config.judgecode);
 			return NULL;
 		}
 		config.restart |= PIPE;
@@ -475,20 +390,17 @@ struct Config *read_config(struct Config *config_old, struct Config *params)
 
 	ptr = getenv("JUDGE_FIFO");
 	if (ptr == NULL && strlen(config.fifofile) > 0) {
-		sprintf( string_out, "%s: set fifofile to '%s'\n", config.judgecode, config.fifofile);
-		output(LOG_NOTICE, string_out);
+		logging(LOG_NOTICE, L"%s: set fifofile to '%s'\n", config.judgecode, config.fifofile);
 		config.restart |= PIPE;
 	}
 	else if (ptr != NULL && strlen(config.fifofile) == 0) {
-		sprintf( string_out, "%s: unset fifofile.\n", config.judgecode);
-		output(LOG_NOTICE, string_out);
+		logging(LOG_NOTICE, L"%s: unset fifofile.\n", config.judgecode);
 		config.restart |= PIPE;
 	}
 	else if (ptr != NULL && strlen(config.fifofile) > 0) {
 		i = strcmp(ptr, config.fifofile);
 		if (i != 0) {
-			sprintf( string_out, "%s: change fifofile to '%s'\n", config.judgecode, config.fifofile);
-			output(LOG_NOTICE, string_out);
+			logging(LOG_NOTICE, L"%s: change fifofile to '%s'\n", config.judgecode, config.fifofile);
 			config.restart |= PIPE;
 		}
 		else {
@@ -500,20 +412,17 @@ struct Config *read_config(struct Config *config_old, struct Config *params)
 
 	ptr = getenv("JUDGE_UNIX");
 	if (ptr == NULL && strlen(config.unixsocket) > 0) {
-		sprintf( string_out, "%s: set unixsocket to '%s'\n", config.judgecode, config.unixsocket);
-		output(LOG_NOTICE, string_out);
+		logging(LOG_NOTICE, L"%s: set unixsocket to '%s'\n", config.judgecode, config.unixsocket);
 		config.restart |= UNIX;
 	}
 	else if (ptr != NULL && strlen(config.unixsocket) == 0) {
-		sprintf( string_out, "%s: unset unixsocket.\n", config.judgecode);
-		output(LOG_NOTICE, string_out);
+		logging(LOG_NOTICE, L"%s: unset unixsocket.\n", config.judgecode);
 		config.restart |= UNIX;
 	}
 	else if (ptr != NULL && strlen(config.unixsocket) > 0) {
 		i = strcmp(ptr, config.unixsocket);
 		if (i != 0) {
-			sprintf( string_out, "%s: change unixsocket to '%s'\n", config.judgecode, config.unixsocket);
-			output(LOG_NOTICE, string_out);
+			logging(LOG_NOTICE, L"%s: change unixsocket to '%s'\n", config.judgecode, config.unixsocket);
 			config.restart |= UNIX;
 		}
 		else {
@@ -554,11 +463,9 @@ struct Config *read_config(struct Config *config_old, struct Config *params)
 			for (j=0 ; j < 5 ; j++) {
 				sprintf(buffer, "JUDGE_INET%d", j);
 				if (getenv(buffer) == NULL) {
-					sprintf( string_out, "%s: set %s to '%s' (%d)\n", config.judgecode, buffer, &variable[i*128], (int)strlen(&variable[i*128]));
-					output(LOG_NOTICE, string_out);
+					logging(LOG_NOTICE, L"%s: set %s to '%s' (%d)\n", config.judgecode, buffer, &variable[i*128], (int)strlen(&variable[i*128]));
 					if( setenv(buffer, &variable[i*128], 1) != 0 ) {
-						sprintf( string_out, "%s: couldn't set %s\n", config.judgecode, buffer);
-						output(LOG_ERR, string_out);
+						logging(LOG_ERR, L"%s: couldn't set %s\n", config.judgecode, buffer);
 						return NULL;
 					}
 					config.restart |= (INET << j);
@@ -576,8 +483,7 @@ struct Config *read_config(struct Config *config_old, struct Config *params)
 	if (config.inetport != j) {
 		sprintf(buffer,"%d",config.inetport);
 		if( setenv("JUDGE_INETPORT", buffer, 1) != 0 ) {
-			sprintf( string_out, "%s: couldn't set JUDGE_INETPORT\n", config.judgecode);
-			output(LOG_ERR, string_out);
+			logging(LOG_ERR, L"%s: couldn't set JUDGE_INETPORT\n", config.judgecode);
 			return NULL;
 		}
 		for (i = 0 ; i < 5 ; i++) {

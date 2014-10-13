@@ -53,29 +53,36 @@ Whois *get_whois_by_id(int uid) {
 
 int update_whois(Whois *update) {
 	Whois *whois;
-	FILE *whois_fp, *whoisb_fp;
+	FILE *whois_fp, *whois_new_fp;
 	char temp[1024], temp2[1024];
 
 	whois = malloc(sizeof(Whois));
 	memset(whois, 0, sizeof(Whois));
 
 	sprintf(temp, "%s/dip.whois", getenv("JUDGE_DIR"));
-	sprintf(temp2, "%s/dip.whois.bak", getenv("JUDGE_DIR"));
-	rename(temp, temp2);
-	if((whoisb_fp = fopen(temp2, "r")) == NULL) return -1;
-	if((whois_fp = fopen(temp, "w")) == NULL) return -1;
+	sprintf(temp2, "%s/dip.whois.new", getenv("JUDGE_DIR"));
+
+	if((whois_fp = fopen(temp, "r")) == NULL) return -1;
+	if((whois_new_fp = fopen(temp2, "w")) == NULL) {
+		fclose(whois_fp);
+		return -1;
+	}
 
 	while (whois) {
-		whois = read_whois(whoisb_fp);
-
+		whois = read_whois(whois_fp);
 		if (whois->uid == update->uid)
-			write_whois(update, whois_fp);
+			write_whois(update, whois_new_fp);
 		else
-			write_whois(whois, whois_fp);
-
+			write_whois(whois, whois_new_fp);
 	}
+
 	fclose(whois_fp);
-	fclose(whoisb_fp);
+	fclose(whois_new_fp);
+
+	sprintf(temp2, "%s/dip.whois.bak", getenv("JUDGE_DIR"));
+	rename(temp, temp2);
+	sprintf(temp2, "%s/dip.whois.new", getenv("JUDGE_DIR"));
+	rename(temp2, temp);
 	return 0;
 }
 
@@ -184,9 +191,7 @@ Whois *read_whois(FILE *fp) {
 	if (whois->uid) {
 		return whois;
 	}
-	else {
-		return NULL;
-	}
+	return NULL;
 }
 
 

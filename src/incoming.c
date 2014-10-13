@@ -20,9 +20,9 @@ int incoming (int partner) {
 
 	pid_t pid;
 	struct message msg;
-	char judgedir[255], judgecode[255], gateway[255], string_out[MSGLEN], temp[MSGLEN], *output_mbs, *input_mbs;
+	char judgedir[255], judgecode[255], gateway[255], temp[MSGLEN], *output_mbs = NULL, *input_mbs = NULL;
 	wchar_t temp_wide[MSGLEN];
-	int msgid, shmid, flag = 1;
+	int msgid, shmid = 0, flag = 1;
 	void *shmdata;
 	key_t ipc_key;
 	struct timeval idtime;
@@ -39,44 +39,40 @@ int incoming (int partner) {
 	pid = getpid();
 
 /* Say partner we are ready */
-	msg.prio=partner;
-	sprintf(msg.text, "READY %d\n", pid);
-	msgsnd(msgid, &msg, MSGLEN, 0);
+	send_msg (msgid, 0, partner, L"READY %d\0", pid);
 
 	while (flag) {
 		msgrcv(msgid, &msg, MSGLEN, pid, 0);
 
-		if (strncmp("SHM_ID", msg.text, 6) == 0) {
-			sscanf(msg.text + 6, "%d", &shmid);
+		if (wcsncmp(L"SHM_ID", msg.text, 6) == 0) {
+			swscanf(msg.text + 6, L"%d", &shmid);
 			shmdata = shmat(shmid, NULL, 0);
 			if (shmdata == (void *) -1) {
-				sprintf(string_out, "%s: error while attach shared memory with ID %d\n", judgecode, shmid);
-				output(LOG_ERR, string_out);
-				msg.prio=partner;
-				sprintf(msg.text, "ERROR");
-				msgsnd(msgid, &msg, MSGLEN, 0);
+				logging(LOG_ERR, L"%s: error while attach shared memory with ID %d\n", judgecode, shmid);
+				send_msg (msgid, 0, partner, L"ERROR\0");
 				return EXIT_FAILURE;
 			}
-			msg.prio=partner;
-			sprintf(msg.text, "SHM_OK");
-			msgsnd(msgid, &msg, MSGLEN, 0);
+			send_msg (msgid, 0, partner, L"SHM_OK\0");
 		}
 
-		else if (strncmp("SHM_DATA", msg.text, 8) == 0) {
+		else if (wcsncmp(L"SHM_DATA", msg.text, 8) == 0) {
 			input_mbs = resive_sharedmemory(shmdata, msgid, pid, partner);
 			if (input_mbs == NULL) {
-				sprintf(string_out, "%s: no message recived.\n", judgecode);
-				output(LOG_ERR, string_out);
+				logging(LOG_ERR, L"%s: no message recived.\n", judgecode);
 			}
 		}
 
-		else if (strncmp("SHM_WAIT", msg.text, 8) == 0) {
+		else if (wcsncmp(L"SHM_WAIT", msg.text, 8) == 0) {
+			flag = 0;
+		}
+
+		else if (wcsncmp(L"PROCESS", msg.text, 7) == 0) {
+			return 0;
 			flag = 0;
 		}
 
 		else {
-			sprintf(string_out, "%s: don't understand '%s'\n", judgecode, msg.text);
-			output(LOG_ERR, string_out);
+			logging(LOG_ERR, L"%s: don't understand '%ls'\n", judgecode, msg.text);
 			flag = 0;
 		}
 
@@ -84,30 +80,25 @@ int incoming (int partner) {
 	if (!input_mbs) return EXIT_FAILURE;
 	output_mbs = NULL;
 
-// Auswerten !!!
-// we have receive a QUIT
 
+
+
+
+
+// Auswerten !!!
+
+// we have receive a QUIT
 	if (strncmp("From quit\n", input_mbs, 10) == 0) {
 		shmdt(shmdata);
-		msg.prio=partner;
-		sprintf(msg.text, "SHM_BYE\n");
-		msgsnd(msgid, &msg, MSGLEN, 0);
-
-		sprintf(msg.text, input_mbs);
-		msg.prio=1;
-		msgsnd(msgid, &msg, MSGLEN, 0);
+		send_msg (msgid, 0, partner, L"SHM_BYE\0");
+		send_msg (msgid, 0, 1, L"%s\0", input_mbs);
 	}
 
 // we have receive a ATRUN
 	else if (strncmp("From atrun ", input_mbs, 11) == 0) {
 		shmdt(shmdata);
-		msg.prio=partner;
-		sprintf(msg.text, "SHM_BYE\n");
-		msgsnd(msgid, &msg, MSGLEN, 0);
-
-		sprintf(msg.text, input_mbs);
-		msg.prio=1;
-		msgsnd(msgid, &msg, MSGLEN, 0);
+		send_msg (msgid, 0, partner, L"SHM_BYE\0");
+		send_msg (msgid, 0, 1, L"%s\0", input_mbs);
 	}
 
 // we have receive a message
@@ -204,8 +195,7 @@ int incoming (int partner) {
 			free(output_wide.buffer);
 			output_wide.buffer = NULL;
 
-			sprintf(string_out, "%s: schreibe Nachricht ...\n", judgecode);
-			output(LOG_ERR, string_out);
+			logging(LOG_ERR, L"%s: schreibe Nachricht ...\n", judgecode);
 			write_message(email_headers, output_mbs, idtime);
 
 
@@ -232,16 +222,12 @@ int incoming (int partner) {
 			}
 			semaphore_operation (semid, 0, UNLOCK);
 			time(&now);
-			sprintf(msg.text, "From atrun %ld", now + 61);
-			msg.prio=1;
-			msgsnd(msgid, &msg, MSGLEN, 0);
+			send_msg (msgid, 0, 1, L"From atrun %ld\0", now + 61);
 */
 
 // Abmelden
 			shmdt(shmdata);
-			msg.prio=partner;
-			sprintf(msg.text, "SHM_BYE\n");
-			msgsnd(msgid, &msg, MSGLEN, 0);
+			send_msg (msgid, 0, partner, L"SHM_BYE\0");
 
 // Aufräumen
 			if (output_mbs) {
@@ -263,18 +249,14 @@ int incoming (int partner) {
 /* send answer per fifo or socket */
 			if (wcslen(email_headers->gateway)) {
 				wcstombs(temp, email_headers->gateway, MSGLEN);
-				msg.prio=partner;
-				sprintf(msg.text, "SHM_ANSWER %s\n", temp);
-				msgsnd(msgid, &msg, MSGLEN, 0);
+				send_msg (msgid, 0, partner, L"SHM_ANSWER %s\0", temp);
+
 				flag = send_sharedmemory(shmdata, output_mbs, msgid, pid, partner);
 				if (flag) {
-					sprintf(string_out, "%s: send per sharedmemory apported.\n", judgecode);
-					output(LOG_ERR, string_out);
+					logging(LOG_ERR, L"%s: send per sharedmemory apported.\n", judgecode);
 				}
 				shmdt(shmdata);
-				msg.prio=partner;
-				sprintf(msg.text, "SHM_BYE\n");
-				msgsnd(msgid, &msg, MSGLEN, 0);
+				send_msg (msgid, 0, partner, L"SHM_BYE\0");
 			}
 
 /* send answer per email */

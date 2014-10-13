@@ -45,14 +45,53 @@ int chowngrp(int uid, int gid) {
 
 
 
-void output(int lvl, char *string) {
-	if (getppid() == 1) {
-		syslog( lvl, "%s", string);
-	}
+/*
+0 	LOG_EMERG 	System ist unbrauchbar. 
+1 	LOG_ALERT 	Dringend irgendwelche Aktionen einleiten 
+2 	LOG_CRIT 	Kritische Nachrichten 
+3 	LOG_ERR 	Normaler Fehler 
+4 	LOG_WARNING 	Warnung 
+5 	LOG_NOTICE 	Normale, bedeutende Nachricht (Standard) 
+6 	LOG_INFO 	Normale Nachricht 
+7 	LOG_DEBUG 	Unwichtige Nachricht
+*/
+
+void logging(const int lvl, const wchar_t *format, ...) {
+	wchar_t output[1024];
+	va_list arglist;
+	va_start(arglist,format);
+	vswprintf(output, 1024, format, arglist);
+
+	if (atoi(getenv("JUDGE_DAEMON"))) syslog( lvl, "%ls", output);
 	else {
-		if (lvl > 3) fprintf(stdout, "Info: %s", string);
-		else fprintf(stderr, "Error: %s", string);
+		switch(lvl) {
+			case 0:
+				fwprintf(stderr, L"Emergency: %ls", output);
+				break;
+			case 1:
+				fwprintf(stderr, L"Alert: %ls", output);
+				break;
+			case 2:
+				fwprintf(stderr, L"Critical: %ls", output);
+				break;
+			case 3:
+				fwprintf(stderr, L"Error: %ls", output);
+				break;
+			case 4:
+				fwprintf(stdout, L"Warning: %ls", output);
+				break;
+			case 5:
+				fwprintf(stdout, L"Notice: %ls", output);
+				break;
+			case 6:
+				fwprintf(stdout, L"Info: %ls", output);
+				break;
+			case 7:
+				fwprintf(stdout, L"Debug: %ls", output);
+				break;
+			default:
+				fwprintf(stdout, L"Unknown: %ls", output);
+		}
 	}
+	va_end(arglist);
 }
-
-

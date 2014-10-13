@@ -35,9 +35,7 @@ static void child_quit (int signr) {
 
 int main(int argc, char **argv) {
 
-	struct message msg;
-
-	char judgecode[255], socket[255], string_out[1024];
+	char judgecode[255], socket[255];
 	int judgeuid, judgegid, type = NONE, status = 0, port, judgedaemon, res;
 	int fd_socket, fd_connect;
 	pid_t pid;
@@ -54,22 +52,19 @@ int main(int argc, char **argv) {
 // looking for type of socket
 
 	if (getenv("JUDGE_INET") != NULL) {
-		sprintf( string_out, "%s: inet-socket found.\n", judgecode);
-		output(LOG_NOTICE, string_out);
+		logging(LOG_NOTICE, L"%s: inet-socket found.\n", judgecode);
 		strcpy(socket, getenv("JUDGE_INET"));
 		sscanf(getenv("JUDGE_INETPORT"), "%d", &port);
 		type = INET;
 	}
 	else if (getenv("JUDGE_UNIX") != NULL) {
-		sprintf( string_out, "%s: unix-socket found.\n", judgecode);
-		output(LOG_NOTICE, string_out);
+		logging(LOG_NOTICE, L"%s: unix-socket found.\n", judgecode);
 		strcpy(socket, getenv("JUDGE_UNIX"));
 		type = UNIX;
 	}
 
 	if(type == NONE) {
-		sprintf( string_out, "%s: no socket defined. exit.\n", judgecode);
-		output(LOG_ERR, string_out);
+		logging(LOG_ERR, L"%s: no socket defined. exit.\n", judgecode);
 		return EXIT_FAILURE;
 	}
 
@@ -78,36 +73,31 @@ int main(int argc, char **argv) {
 	umask (0111);
 	if (type == UNIX) {
 		if ((fd_socket = create_socket(AF_LOCAL, SOCK_STREAM, 0)) == 0) {
-			sprintf( string_out, "%s: couldn't create unix-socket '%s'.\n", judgecode, socket);
-			output(LOG_ERR, string_out);
+			logging(LOG_ERR, L"%s: couldn't create unix-socket '%s'.\n", judgecode, socket);
 			status = -1;
 		}
 		else {
 			if (bind_un_socket(&fd_socket, socket) != 0) {
 				status = -2;
-				sprintf( string_out, "%s: unix-socket '%s' isn't free. exit.\n", judgecode, socket);
-				output(LOG_ERR, string_out);
+				logging(LOG_ERR, L"%s: unix-socket '%s' isn't free. exit.\n", judgecode, socket);
 			}
 			else {
 				if (chown(socket, judgeuid, judgegid) != 0) {
 					status = -3;
-					sprintf( string_out, "%s: can't change user and/or group of unix-socket '%s'. exit.\n", judgecode, socket);
-					output(LOG_ERR, string_out);
+					logging(LOG_ERR, L"%s: can't change user and/or group of unix-socket '%s'. exit.\n", judgecode, socket);
 				}
 			}
 		}
 	}
 	if (type == INET) {
 		if ((fd_socket = create_socket(AF_INET, SOCK_STREAM, 0)) == 0) {
-			sprintf( string_out, "%s: couldn't create inet-socket '%s:%d'.\n", judgecode, socket, port);
-			output(LOG_ERR, string_out);
+			logging(LOG_ERR, L"%s: couldn't create inet-socket '%s:%d'.\n", judgecode, socket, port);
 			status = -1;
 		}
 		else {
 			if (bind_in_socket(&fd_socket, socket, port) != 0) {
 				status = -2;
-				sprintf( string_out, "%s: inet-socket '%s:%d' isn't free. exit.\n", judgecode, socket, port);
-				output(LOG_ERR, string_out);
+				logging(LOG_ERR, L"%s: inet-socket '%s:%d' isn't free. exit.\n", judgecode, socket, port);
 			}
 		}
 	}
@@ -127,19 +117,15 @@ int main(int argc, char **argv) {
  */
 
 	if ((res = chowngrp(judgeuid, judgegid)) != 0) {
-		if (res == -1) sprintf( string_out, "%s: can't change user. exit.\n", judgecode);
-		if (res == -2) sprintf( string_out, "%s: can't change group. exit.\n", judgecode);
-		if (res < 0) {
-			output(LOG_ERR, string_out);
-			return EXIT_FAILURE;
-		}
+		if (res == -1) logging(LOG_ERR, L"%s: can't change user. exit.\n", judgecode);
+		if (res == -2) logging(LOG_ERR, L"%s: can't change group. exit.\n", judgecode);
+		if (res < 0) return EXIT_FAILURE;
 	}
 
 // listen on socket
 
 	if (listen (fd_socket, SOMAXCONN) != 0) {
-		sprintf( string_out, "%s: can't listen on socket '%s'. exit.\n", judgecode, socket);
-		output(LOG_ERR, string_out);
+		logging(LOG_ERR, L"%s: can't listen on socket '%s'. exit.\n", judgecode, socket);
 		return EXIT_FAILURE;
 	}
 
@@ -154,15 +140,13 @@ int main(int argc, char **argv) {
 			if( errno == EINTR )
 				continue;
 			else {
-				sprintf( string_out, "%s: error while accept() (%s)\n", judgecode, strerror(errno));
-				output(LOG_ERR, string_out);
+				logging(LOG_ERR, L"%s: error while accept() (%s)\n", judgecode, strerror(errno));
 				return EXIT_FAILURE;
 			}
 		}
 
 		if ((pid = fork ()) < 0) {
-			sprintf( string_out, "%s: error while fork sock-child.\n", judgecode);
-			output(LOG_ERR, string_out);
+			logging(LOG_ERR, L"%s: error while fork sock-child.\n", judgecode);
 			run = 0;
 		}
 
@@ -180,6 +164,7 @@ int main(int argc, char **argv) {
 			key_t shm_key = -1;
 			void *shmdata;
 			srand(time(NULL));
+			struct message msg;
 
 			own_pid = getpid();
 			msgid = msgget (msg_key, IPC_PRIVATE);
@@ -190,8 +175,7 @@ int main(int argc, char **argv) {
 				pos += cnt;
 				cnt = 0;
 				if ( (int)(pos / BUFFER_SIZE) == blocks) {
-					sprintf( string_out, "%s: pos = %d ; realloc to size %d (%d blocks).\n", judgecode, pos, BUFFER_SIZE * (blocks + 1), blocks + 1);
-					output(LOG_NOTICE, string_out);
+					logging(LOG_NOTICE, L"%s: pos = %d ; realloc to size %d (%d blocks).\n", judgecode, pos, BUFFER_SIZE * (blocks + 1), blocks + 1);
 					msgbuffer = realloc(msgbuffer, BUFFER_SIZE * sizeof(char) * ++blocks);
 				}
 			}
@@ -200,51 +184,39 @@ int main(int argc, char **argv) {
 			while (shm_key < 0) shm_key = time(NULL)-rand();
 			shmid = init_sharedmemory (shm_key);
 			shmdata = shmat(shmid, NULL, 0);
-
-			msg.prio=1;
-			sprintf( msg.text, "MESSAGE %d\n", own_pid);
-			msgsnd(msgid, &msg, MSGLEN, 0);
+			send_msg (msgid, 0, 1, L"MESSAGE %d\0", own_pid);
 
 			cnt = 1;
 			while (cnt) {
 				msgrcv(msgid, &msg, MSGLEN, own_pid, 0);
 
-				if (strncmp("READY", msg.text, 5) == 0) {
-					sscanf(msg.text + 5,"%d", &partner);
-					msg.prio=partner;
-					sprintf( msg.text, "SHM_ID %d\n", shmid);
-					msgsnd(msgid, &msg, MSGLEN, 0);
+				if (wcsncmp(L"READY", msg.text, 5) == 0) {
+					swscanf(msg.text + 5, L"%d", &partner);
+					send_msg (msgid, 0, partner, L"SHM_ID %d\0", shmid);
 				}
 
-				else if (strncmp("SHM_OK", msg.text, 6) == 0) {
+				else if (wcsncmp(L"SHM_OK", msg.text, 6) == 0) {
 					pos = send_sharedmemory(shmdata, msgbuffer, msgid, own_pid, partner);
 					if (pos) {
-						sprintf(string_out, "%s: send per sharedmemory apported.\n", judgecode);
-						output(LOG_ERR, string_out);
+						logging(LOG_ERR, L"%s: send per sharedmemory apported.\n", judgecode);
 						cnt = 0;
 					}
-					else {
-						msg.prio=partner;
-						sprintf( msg.text, "SHM_WAIT\n");
-						msgsnd(msgid, &msg, MSGLEN, 0);
-					}
+					else send_msg (msgid, 0, partner, L"SHM_WAIT\0");
 					free(msgbuffer);
 					msgbuffer = NULL;
 				}
 
-				else if (strncmp("SHM_ANSWER", msg.text, 10) == 0) {
+				else if (wcsncmp(L"SHM_ANSWER", msg.text, 10) == 0) {
 					msgbuffer = resive_sharedmemory(shmdata, msgid, own_pid, partner);
 					if (msgbuffer == NULL) {
-						sprintf(string_out, "%s: resive per sharedmemory apported.\n", judgecode);
-						output(LOG_ERR, string_out);
+						logging(LOG_ERR, L"%s: resive per sharedmemory apported.\n", judgecode);
 					}
 				}
 
-				else if (strncmp("SHM_BYE", msg.text, 7) == 0) cnt = 0;
+				else if (wcsncmp(L"SHM_BYE", msg.text, 7) == 0) cnt = 0;
 
 				else {
-					sprintf(string_out, "%s: don't understand '%s'\n", judgecode, msg.text);
-					output(LOG_ERR, string_out);
+					logging(LOG_ERR, L"%s: don't understand '%s'\n", judgecode, msg.text);
 					cnt = 0;
 				}
 			}
@@ -257,11 +229,8 @@ int main(int argc, char **argv) {
 // Antworten !!!
 
 			if (msgbuffer) {
-				cnt= write(fd_connect, msgbuffer, strlen(msgbuffer));
-				if (cnt != strlen(msgbuffer)) {
-					sprintf(string_out, "%s: an error occured while write to socket.\n", judgecode);
-					output(LOG_ERR, string_out);
-				}
+				cnt = write(fd_connect, msgbuffer, strlen(msgbuffer));
+				if (cnt != strlen(msgbuffer)) logging(LOG_ERR, L"%s: an error occured while write to socket.\n", judgecode);
 
 				close(fd_connect);
 				free(msgbuffer);
@@ -272,8 +241,7 @@ int main(int argc, char **argv) {
 
 	}
 
-	sprintf( string_out, "%s: 'SIGQUIT' received.", judgecode);
-	output(LOG_NOTICE, string_out);
+	logging(LOG_NOTICE, L"%s: 'SIGQUIT' received.", judgecode);
 	close_socket(&fd_socket);
 	return EXIT_SUCCESS;
 }
